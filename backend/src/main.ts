@@ -1,8 +1,9 @@
-import compression from "compression";
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
+import { createServer } from "node:http";
+import { combatActionsRouter } from "./routes/combat.actions.routes.js";
 import { authRouter } from "./routes/auth.routes.js";
 import { adminRouter } from "./routes/admin.routes.js";
 import { gamesRouter } from "./routes/games.routes.js";
@@ -11,10 +12,12 @@ import { charactersRouter } from "./routes/characters.routes.js";
 import { combatRouter } from "./routes/combat.routes.js";
 import path from "node:path";
 import { presetsRouter } from "./routes/presets.routes.js";
+import { initSocket } from "./lib/socket.js";
 
 dotenv.config();
 
 const app = express();
+const httpServer = createServer(app);
 
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
@@ -30,6 +33,9 @@ app.use(
 
 app.use(express.json());
 app.use(cookieParser());
+
+// Inicializar socket.io
+initSocket(httpServer, FRONTEND_URL);
 
 app.get("/", (_req, res) => {
   res.json({
@@ -63,10 +69,10 @@ app.use("/games", gamesRouter);
 app.use("/", mapsRouter);
 app.use("/", charactersRouter);
 app.use("/", combatRouter);
+app.use("/", combatActionsRouter);
 app.use("/", presetsRouter);
-app.use(compression());
 
-
-app.listen(PORT, () => {
+// Usar httpServer en vez de app.listen para que socket.io funcione
+httpServer.listen(PORT, () => {
   console.log(`Backend running on http://localhost:${PORT}`);
 });

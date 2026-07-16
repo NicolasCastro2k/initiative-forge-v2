@@ -134,6 +134,7 @@ model CombatEncounter {
 
   game       Game        @relation(fields: [gameId], references: [id], onDelete: Cascade)
   combatants Combatant[]
+  logs       CombatLog[]
 
   @@index([gameId])
 }
@@ -146,13 +147,34 @@ model Combatant {
   characterId String?
   ownerUserId String?
 
-  name       String
-  hp         Int
-  maxHp      Int
-  ac         Int
-  x          Int
-  y          Int
+  name String
+  hp   Int
+  maxHp Int
+  ac   Int
+  x    Int
+  y    Int
   initiative Int
+
+  // Velocidad y movimiento (1 casilla = 5 pies)
+  speed        Int @default(30)
+  movementUsed Int @default(0)
+
+  // Recursos de turno
+  hasAction      Boolean @default(true)
+  hasBonusAction Boolean @default(true)
+  hasReaction    Boolean @default(true)
+  isDashing      Boolean @default(false)
+
+  // Stats base D&D
+  str Int @default(10)
+  dex Int @default(10)
+  con Int @default(10)
+  int Int @default(10)
+  wis Int @default(10)
+  cha Int @default(10)
+
+  // Condiciones activas: ["poisoned", "stunned", ...]
+  conditions Json @default("[]")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -163,6 +185,21 @@ model Combatant {
   @@index([encounterId])
   @@index([characterId])
   @@index([ownerUserId])
+}
+
+model CombatLog {
+  id          String   @id @default(cuid())
+  encounterId String
+  round       Int
+  actorName   String
+  action      String
+  detail      String
+  rolls       Json     @default("[]")
+  createdAt   DateTime @default(now())
+
+  encounter CombatEncounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+
+  @@index([encounterId])
 }
 
 model ClassPreset {
