@@ -273,3 +273,32 @@ model SubclassFeaturePreset {
   @@index([subclassPresetId])
   @@index([level])
 }
+
+model RacePreset {
+  id             String   @id
+  name           String
+  source         String   @default("SRD")
+  speed          Int      @default(30)
+  size           String   @default("Medium")
+  abilityBonuses Json     @default("{}") // { "strength": 1, "dexterity": 2, ... }
+  traits         String[]
+  languages      String[]
+  isSrd          Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model BackgroundPreset {
+  id                  String   @id
+  name                String
+  source              String   @default("SRD")
+  skillProficiencies  String[]
+  toolProficiencies   String[]
+  languages           Int      @default(0) // cantidad de idiomas a elegir
+  feature             String
+  featureDescription  String?
+  equipment           String[]
+  isSrd               Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}

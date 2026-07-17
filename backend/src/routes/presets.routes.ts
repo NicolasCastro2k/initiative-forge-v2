@@ -4,112 +4,131 @@ import { getAuthUser } from "../lib/getAuthUser.js";
 
 export const presetsRouter = Router();
 
+// ─── GET /presets/classes ─────────────────────────────────────────────────────
+
 presetsRouter.get("/presets/classes", async (req, res) => {
-try {
-const user = getAuthUser(req);
+  try {
+    const user = getAuthUser(req);
+    if (!user) return res.status(401).json({ message: "Debes iniciar sesión." });
 
-
-if (!user) {
-  return res.status(401).json({
-    message: "Debes iniciar sesión.",
-  });
-}
-
-const classes = await prisma.classPreset.findMany({
-  orderBy: {
-    name: "asc",
-  },
-  include: {
-    features: {
-      orderBy: [
-        {
-          level: "asc",
-        },
-        {
-          name: "asc",
-        },
-      ],
-    },
-    subclasses: {
-      orderBy: {
-        name: "asc",
+    const classes = await prisma.classPreset.findMany({
+      orderBy: { name: "asc" },
+      include: {
+        features: { orderBy: [{ level: "asc" }, { name: "asc" }] },
+        subclasses: { orderBy: { name: "asc" } },
       },
-    },
-  },
+    });
+
+    return res.json({ classes });
+  } catch (error) {
+    console.error("Error en GET /presets/classes:", error);
+    return res.status(500).json({ message: "Error interno al cargar clases." });
+  }
 });
 
-return res.json({
-  classes,
-});
-
-
-} catch (error) {
-console.error("Error en GET /presets/classes:", error);
-
-
-return res.status(500).json({
-  message: "Error interno al cargar clases.",
-});
-
-
-}
-});
+// ─── GET /presets/classes/:classId ───────────────────────────────────────────
 
 presetsRouter.get("/presets/classes/:classId", async (req, res) => {
-try {
-const user = getAuthUser(req);
+  try {
+    const user = getAuthUser(req);
+    if (!user) return res.status(401).json({ message: "Debes iniciar sesión." });
 
-
-if (!user) {
-  return res.status(401).json({
-    message: "Debes iniciar sesión.",
-  });
-}
-
-const classId = String(req.params.classId);
-
-const classPreset = await prisma.classPreset.findUnique({
-  where: {
-    id: classId,
-  },
-  include: {
-    features: {
-      orderBy: [
-        {
-          level: "asc",
+    const classPreset = await prisma.classPreset.findUnique({
+      where: { id: String(req.params.classId) },
+      include: {
+        features: { orderBy: [{ level: "asc" }, { name: "asc" }] },
+        subclasses: {
+          orderBy: { name: "asc" },
+          include: {
+            features: { orderBy: [{ level: "asc" }, { name: "asc" }] },
+          },
         },
-        {
-          name: "asc",
-        },
-      ],
-    },
-    subclasses: {
-      orderBy: {
-        name: "asc",
       },
-    },
-  },
+    });
+
+    if (!classPreset) return res.status(404).json({ message: "Clase no encontrada." });
+
+    return res.json({ classPreset });
+  } catch (error) {
+    console.error("Error en GET /presets/classes/:classId:", error);
+    return res.status(500).json({ message: "Error interno al cargar clase." });
+  }
 });
 
-if (!classPreset) {
-  return res.status(404).json({
-    message: "Clase no encontrada.",
-  });
-}
+// ─── GET /presets/races ───────────────────────────────────────────────────────
+// Lee de la tabla RacePreset en la base de datos.
 
-return res.json({
-  classPreset,
+presetsRouter.get("/presets/races", async (req, res) => {
+  try {
+    const user = getAuthUser(req);
+    if (!user) return res.status(401).json({ message: "Debes iniciar sesión." });
+
+    const races = await prisma.racePreset.findMany({
+      orderBy: { name: "asc" },
+    });
+
+    return res.json({ races });
+  } catch (error) {
+    console.error("Error en GET /presets/races:", error);
+    return res.status(500).json({ message: "Error interno al cargar razas." });
+  }
 });
 
+// ─── GET /presets/races/:raceId ──────────────────────────────────────────────
 
-} catch (error) {
-console.error("Error en GET /presets/classes/:classId:", error);
+presetsRouter.get("/presets/races/:raceId", async (req, res) => {
+  try {
+    const user = getAuthUser(req);
+    if (!user) return res.status(401).json({ message: "Debes iniciar sesión." });
 
+    const race = await prisma.racePreset.findUnique({
+      where: { id: String(req.params.raceId) },
+    });
 
-return res.status(500).json({
-  message: "Error interno al cargar clase.",
+    if (!race) return res.status(404).json({ message: "Raza no encontrada." });
+
+    return res.json({ race });
+  } catch (error) {
+    console.error("Error en GET /presets/races/:raceId:", error);
+    return res.status(500).json({ message: "Error interno al cargar raza." });
+  }
 });
 
+// ─── GET /presets/backgrounds ────────────────────────────────────────────────
+// Lee de la tabla BackgroundPreset en la base de datos.
 
-}
+presetsRouter.get("/presets/backgrounds", async (req, res) => {
+  try {
+    const user = getAuthUser(req);
+    if (!user) return res.status(401).json({ message: "Debes iniciar sesión." });
+
+    const backgrounds = await prisma.backgroundPreset.findMany({
+      orderBy: { name: "asc" },
+    });
+
+    return res.json({ backgrounds });
+  } catch (error) {
+    console.error("Error en GET /presets/backgrounds:", error);
+    return res.status(500).json({ message: "Error interno al cargar trasfondos." });
+  }
+});
+
+// ─── GET /presets/backgrounds/:backgroundId ──────────────────────────────────
+
+presetsRouter.get("/presets/backgrounds/:backgroundId", async (req, res) => {
+  try {
+    const user = getAuthUser(req);
+    if (!user) return res.status(401).json({ message: "Debes iniciar sesión." });
+
+    const background = await prisma.backgroundPreset.findUnique({
+      where: { id: String(req.params.backgroundId) },
+    });
+
+    if (!background) return res.status(404).json({ message: "Trasfondo no encontrado." });
+
+    return res.json({ background });
+  } catch (error) {
+    console.error("Error en GET /presets/backgrounds/:backgroundId:", error);
+    return res.status(500).json({ message: "Error interno al cargar trasfondo." });
+  }
 });

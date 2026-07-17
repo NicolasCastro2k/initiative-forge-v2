@@ -272,14 +272,16 @@ export default function CombatPage() {
       setCombatLog((current) => ["El DM está colocando las fichas en el tablero...", ...current]);
     });
 
-    // Movimiento instantáneo — solo actualiza x/y sin recargar todo el estado
-    socket.on("combatant:moved", (payload: { combatantId: string; x: number; y: number }) => {
+    // Movimiento instantáneo — actualiza x/y y movementUsed
+    socket.on("combatant:moved", (payload: { combatantId: string; x: number; y: number; movementUsed: number }) => {
       setEncounter((current) => {
         if (!current) return current;
         return {
           ...current,
           combatants: current.combatants.map((c) =>
-            c.id === payload.combatantId ? { ...c, x: payload.x, y: payload.y } : c
+            c.id === payload.combatantId
+              ? { ...c, x: payload.x, y: payload.y, movementUsed: payload.movementUsed }
+              : c
           ),
         };
       });
@@ -639,14 +641,21 @@ export default function CombatPage() {
 
     const previousX = combatant.x;
     const previousY = combatant.y;
+    const previousMovementUsed = combatant.movementUsed;
 
-    // Mover el token en pantalla de inmediato
+    // Calcular costo del movimiento (Chebyshev × 5 pies)
+    const dx = Math.abs(x - previousX);
+    const dy = Math.abs(y - previousY);
+    const costFeet = Math.max(dx, dy) * 5;
+    const newMovementUsed = previousMovementUsed + costFeet;
+
+    // Mover el token en pantalla de inmediato + actualizar movementUsed
     setEncounter((current) => {
       if (!current) return current;
       return {
         ...current,
         combatants: current.combatants.map((c) =>
-          c.id === combatant.id ? { ...c, x, y } : c
+          c.id === combatant.id ? { ...c, x, y, movementUsed: newMovementUsed } : c
         ),
       };
     });
@@ -666,13 +675,13 @@ export default function CombatPage() {
       const data = await response.json().catch(() => null);
 
       if (!response.ok) {
-        // Revertir si el servidor rechazó el movimiento
+        // Revertir posición y movementUsed si el servidor rechazó
         setEncounter((current) => {
           if (!current) return current;
           return {
             ...current,
             combatants: current.combatants.map((c) =>
-              c.id === combatant.id ? { ...c, x: previousX, y: previousY } : c
+              c.id === combatant.id ? { ...c, x: previousX, y: previousY, movementUsed: previousMovementUsed } : c
             ),
           };
         });
@@ -686,7 +695,7 @@ export default function CombatPage() {
         return {
           ...current,
           combatants: current.combatants.map((c) =>
-            c.id === combatant.id ? { ...c, x: previousX, y: previousY } : c
+            c.id === combatant.id ? { ...c, x: previousX, y: previousY, movementUsed: previousMovementUsed } : c
           ),
         };
       });
