@@ -179,16 +179,7 @@ type RealSheetData = {
     spellcastingAbility?: string; // "intelligence", "wisdom", etc.
     spellSaveDc?: number;
     spellAttackBonus?: number;
-    cantrips?: string[];
-    level1?: string[];
-    level2?: string[];
-    level3?: string[];
-    level4?: string[];
-    level5?: string[];
-    level6?: string[];
-    level7?: string[];
-    level8?: string[];
-    level9?: string[];
+    spellsByLevel?: Record<string, string[]>; // { "0": [...], "1": [...], ... }
   };
 };
 
@@ -284,20 +275,37 @@ combatActionsRouter.get(
 
       const sheet = parseRealSheet(combatant.character?.sheetData);
       const spellSheet = sheet.spells ?? {};
+      const spellsByLevel = spellSheet.spellsByLevel ?? {};
 
-      // Recopilar todos los hechizos con su nivel
-      const spells: { name: string; level: number }[] = [
-        ...(spellSheet.cantrips ?? []).map((n) => ({ name: n, level: 0 })),
-        ...(spellSheet.level1 ?? []).map((n) => ({ name: n, level: 1 })),
-        ...(spellSheet.level2 ?? []).map((n) => ({ name: n, level: 2 })),
-        ...(spellSheet.level3 ?? []).map((n) => ({ name: n, level: 3 })),
-        ...(spellSheet.level4 ?? []).map((n) => ({ name: n, level: 4 })),
-        ...(spellSheet.level5 ?? []).map((n) => ({ name: n, level: 5 })),
-        ...(spellSheet.level6 ?? []).map((n) => ({ name: n, level: 6 })),
-        ...(spellSheet.level7 ?? []).map((n) => ({ name: n, level: 7 })),
-        ...(spellSheet.level8 ?? []).map((n) => ({ name: n, level: 8 })),
-        ...(spellSheet.level9 ?? []).map((n) => ({ name: n, level: 9 })),
-      ].filter((s) => s.name.trim() !== "");
+      // Recopilar todos los hechizos conocidos con su nivel
+      const knownSpells: { name: string; level: number }[] = Object.entries(spellsByLevel)
+        .flatMap(([level, names]) =>
+          (names ?? []).map((name) => ({ name, level: Number(level) }))
+        )
+        .filter((s) => s.name.trim() !== "");
+
+      // Enriquecer cada hechizo con los datos del catálogo (coincidencia por nombre, sin distinguir mayúsculas)
+      const catalogSpells = await prisma.spellPreset.findMany();
+      const catalogByName = new Map(catalogSpells.map((s) => [s.name.trim().toLowerCase(), s]));
+
+      const spells = knownSpells.map((known) => {
+        const preset = catalogByName.get(known.name.trim().toLowerCase());
+        return {
+          name: known.name,
+          level: known.level,
+          school: preset?.school ?? null,
+          attackType: preset?.attackType ?? null,
+          savingThrow: preset?.savingThrow ?? null,
+          damageDice: preset?.damageDice ?? null,
+          damageType: preset?.damageType ?? null,
+          healingDice: preset?.healingDice ?? null,
+          areaShape: preset?.areaShape ?? null,
+          areaSizeFeet: preset?.areaSizeFeet ?? null,
+          description: preset?.description ?? null,
+          higherLevels: preset?.higherLevels ?? null,
+          isInCatalog: Boolean(preset),
+        };
+      });
 
       return res.json({
         spells,

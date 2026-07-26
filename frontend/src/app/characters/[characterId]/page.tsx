@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
@@ -10,6 +10,41 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 type AbilityKey = "strength" | "dexterity" | "constitution" | "intelligence" | "wisdom" | "charisma";
 
 type Attack = { name: string; attackBonus: string; damage: string };
+
+type WeaponPreset = {
+  id: string;
+  name: string;
+  category: "simple" | "martial";
+  attackType: "melee" | "ranged";
+  damageDice: string;
+  versatileDice: string | null;
+  damageType: string;
+  properties: string[];
+  rangeNormal: number | null;
+  rangeLong: number | null;
+  isFinesse: boolean;
+  isTwoHanded: boolean;
+};
+
+type SpellPreset = {
+  id: string;
+  name: string;
+  level: number;
+  school: string;
+  castingTime: string;
+  range: string;
+  duration: string;
+  concentration: boolean;
+  ritual: boolean;
+  classes: string[];
+  description: string;
+  attackType: string | null;
+  savingThrow: string | null;
+  damageDice: string | null;
+  damageType: string | null;
+  healingDice: string | null;
+  higherLevels: string | null;
+};
 type EquipmentItem = { quantity: number; name: string };
 type FeatureItem = { name: string; description: string };
 
@@ -83,8 +118,13 @@ type ClassPreset = {
   name: string;
   hitDie: number;
   savingThrows: string[];
+  armorTraining: string[];
+  weaponTraining: string[];
+  toolTraining: string[];
+  skillChoices: string[];
+  skillChoiceCount: number;
   spellcastingAbility: string | null;
-  subclasses: { id: string; name: string }[];
+  subclasses: { id: string; name: string; features?: { level: number; name: string; summary: string }[] }[];
   features: { level: number; name: string; summary: string }[];
 };
 
@@ -94,6 +134,8 @@ type RacePreset = {
   speed: number;
   abilityBonuses: Partial<Record<AbilityKey, number>>;
   traits: string[];
+  appearance: string;
+  commonClasses: string[];
 };
 
 type BackgroundPreset = {
@@ -231,6 +273,86 @@ const skillLabels: { key: string; label: string; ability: AbilityKey }[] = [
   { key: "survival", label: "Supervivencia", ability: "wisdom" },
 ];
 
+// Nombres alternativos en inglés, para hacer match con ClassPreset.skillChoices
+// (que puede venir en inglés o español según cómo se haya sembrado la clase).
+const SKILL_EN_NAMES: Record<string, string> = {
+  acrobatics: "acrobatics",
+  animalHandling: "animal handling",
+  arcana: "arcana",
+  athletics: "athletics",
+  deception: "deception",
+  history: "history",
+  insight: "insight",
+  intimidation: "intimidation",
+  investigation: "investigation",
+  medicine: "medicine",
+  nature: "nature",
+  perception: "perception",
+  performance: "performance",
+  persuasion: "persuasion",
+  religion: "religion",
+  sleightOfHand: "sleight of hand",
+  stealth: "stealth",
+  survival: "survival",
+};
+
+function normalizeSkillText(s: string) {
+  return s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+}
+
+// Convierte un nombre de habilidad tal como viene de ClassPreset.skillChoices
+// (inglés o español) a la key interna usada en sheetData.proficiencies.skills.
+function matchSkillKey(rawName: string): string | null {
+  const normalized = normalizeSkillText(rawName);
+  const found = skillLabels.find((s) => {
+    if (normalizeSkillText(s.label) === normalized) return true;
+    if (normalizeSkillText(SKILL_EN_NAMES[s.key]) === normalized) return true;
+    return false;
+  });
+  return found?.key ?? null;
+}
+
+// Nombres de característica en inglés y español, para hacer match robusto
+// con ClassPreset.savingThrows sin importar en qué idioma se sembró la clase.
+const ABILITY_NAMES: Record<AbilityKey, { en: string; es: string; abbr: string }> = {
+  strength: { en: "strength", es: "fuerza", abbr: "str" },
+  dexterity: { en: "dexterity", es: "destreza", abbr: "dex" },
+  constitution: { en: "constitution", es: "constitucion", abbr: "con" },
+  intelligence: { en: "intelligence", es: "inteligencia", abbr: "int" },
+  wisdom: { en: "wisdom", es: "sabiduria", abbr: "wis" },
+  charisma: { en: "charisma", es: "carisma", abbr: "cha" },
+};
+
+function matchAbilityKey(rawName: string): AbilityKey | null {
+  const normalized = normalizeSkillText(rawName);
+  const found = (Object.keys(ABILITY_NAMES) as AbilityKey[]).find((key) => {
+    const names = ABILITY_NAMES[key];
+    return normalized === names.en || normalized === names.es || normalized === names.abbr;
+  });
+  return found ?? null;
+}
+
+// Determina si un arma del catálogo es compatible con las competencias de
+// armas del personaje (categoría general "Simple/Marcial" o nombre específico
+// de arma). Las entradas de proficiencies.weapons vienen del ClassPreset
+// (texto libre, ej. "Simple Weapons", "Hand Crossbows") o pueden haber sido
+// agregadas manualmente por el jugador.
+function isWeaponProficient(weapon: { name: string; category: "simple" | "martial" }, entries: string[]): boolean {
+  if (entries.length === 0) return true; // sin datos de competencia registrados: no restringir
+  return entries.some((entry) => {
+    const normalized = normalizeSkillText(entry);
+    if (normalized.includes("simple") && weapon.category === "simple") return true;
+    if ((normalized.includes("marcial") || normalized.includes("martial")) && weapon.category === "martial") return true;
+    const weaponName = normalizeSkillText(weapon.name);
+    // Comparación laxa por nombre específico (ej. "Rapiers" contiene "Rapier")
+    return normalized.includes(weaponName) || weaponName.includes(normalized);
+  });
+}
+
 function getImageUrl(path: string | null) {
   if (!path) return "";
   return path.startsWith("http") ? path : `${API_URL}${path}`;
@@ -252,6 +374,12 @@ export default function CharacterSheetPage() {
   const [classes, setClasses] = useState<ClassPreset[]>([]);
   const [races, setRaces] = useState<RacePreset[]>([]);
   const [backgrounds, setBackgrounds] = useState<BackgroundPreset[]>([]);
+  const [weapons, setWeapons] = useState<WeaponPreset[]>([]);
+  const [spellCatalog, setSpellCatalog] = useState<SpellPreset[]>([]);
+  const [spellLevelFilter, setSpellLevelFilter] = useState<string>("all");
+  const [selectedWeaponCatalogId, setSelectedWeaponCatalogId] = useState("");
+  const [weaponAbilityChoice, setWeaponAbilityChoice] = useState<"strength" | "dexterity">("strength");
+  const [weaponIsProficient, setWeaponIsProficient] = useState(true);
   const [selectedClassId, setSelectedClassId] = useState<string>("");
   const [selectedSubclassId, setSelectedSubclassId] = useState<string>("");
   const [selectedRaceId, setSelectedRaceId] = useState<string>("");
@@ -270,6 +398,126 @@ export default function CharacterSheetPage() {
   const selectedClass = classes.find((c) => c.id === selectedClassId) ?? null;
   const availableSubclasses = selectedClass?.subclasses ?? [];
 
+  // Nivel mínimo para elegir subclase — usamos el nivel más bajo de sus rasgos, o 3 por defecto
+  const subclassUnlockLevel = useMemo(() => {
+    if (!selectedClass || availableSubclasses.length === 0) return null;
+    const levels = availableSubclasses
+      .flatMap((s) => s.features?.map((f) => f.level) ?? [])
+      .filter((l) => l > 0);
+    return levels.length > 0 ? Math.min(...levels) : 3;
+  }, [selectedClass, availableSubclasses]);
+
+  const canPickSubclass = subclassUnlockLevel !== null && sheetData.identity.level >= subclassUnlockLevel;
+
+  // ─── Auto-cálculo: Bonif. competencia según nivel ──────────────────────────
+  const computedProficiencyBonus = useMemo(
+    () => Math.ceil(sheetData.identity.level / 4) + 1,
+    [sheetData.identity.level]
+  );
+
+  useEffect(() => {
+    if (sheetData.proficiencies.proficiencyBonus === computedProficiencyBonus) return;
+    setSheetData((prev) => ({
+      ...prev,
+      proficiencies: { ...prev.proficiencies, proficiencyBonus: computedProficiencyBonus },
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [computedProficiencyBonus]);
+
+  // ─── Auto-cálculo: Iniciativa = modificador de Destreza ────────────────────
+  const computedInitiative = useMemo(
+    () => getModifier(sheetData.abilities.dexterity),
+    [sheetData.abilities.dexterity]
+  );
+
+  useEffect(() => {
+    if (sheetData.combat.initiative === computedInitiative) return;
+    setSheetData((prev) => ({ ...prev, combat: { ...prev.combat, initiative: computedInitiative } }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [computedInitiative]);
+
+  // ─── Auto-cálculo: Clase de Armadura ────────────────────────────────────────
+  // Base: 10 + Destreza. Si la clase tiene "Defensa sin Armadura" (Bárbaro,
+  // Monje), se detecta desde los rasgos de la clase y se suma la característica
+  // correspondiente (Constitución o Sabiduría) además de Destreza.
+  const unarmoredDefenseAbility = useMemo((): AbilityKey | null => {
+    const feature = selectedClass?.features.find((f) => {
+      const name = f.name.toLowerCase();
+      return name.includes("unarmored defense") || name.includes("defensa sin armadura");
+    });
+    if (!feature) return null;
+    const summary = feature.summary.toLowerCase();
+    if (summary.includes("constituc")) return "constitution";
+    if (summary.includes("sabidur")) return "wisdom";
+    return null;
+  }, [selectedClass]);
+
+  const computedBaseAc = useMemo(() => {
+    const dexMod = getModifier(sheetData.abilities.dexterity);
+    const bonusMod = unarmoredDefenseAbility ? getModifier(sheetData.abilities[unarmoredDefenseAbility]) : 0;
+    return 10 + dexMod + bonusMod;
+  }, [sheetData.abilities, unarmoredDefenseAbility]);
+
+  useEffect(() => {
+    setSheetData((prev) => ({ ...prev, combat: { ...prev.combat, armorClass: computedBaseAc } }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [computedBaseAc]);
+
+  // ─── PG máximos: sigue siendo editable (depende de la tirada del dado), ────
+  // pero se sugiere un valor que ya incluye el modificador de Constitución.
+  const suggestedMaxHp = useMemo(() => {
+    if (!selectedClass) return null;
+    const level = Math.max(1, sheetData.identity.level);
+    const conMod = getModifier(sheetData.abilities.constitution);
+    const hitDie = selectedClass.hitDie;
+    const averagePerLevel = Math.floor(hitDie / 2) + 1;
+    const hp = hitDie + conMod + (level - 1) * (averagePerLevel + conMod);
+    return Math.max(1, hp);
+  }, [selectedClass, sheetData.identity.level, sheetData.abilities.constitution]);
+
+  // Solo actualiza el texto informativo de dados de golpe (no toca los PG)
+  useEffect(() => {
+    if (!selectedClass) return;
+    const dice = `${sheetData.identity.level}d${selectedClass.hitDie}`;
+    setSheetData((prev) => ({
+      ...prev,
+      combat: { ...prev.combat, hitDiceTotal: dice, hitDiceCurrent: dice },
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sheetData.identity.level, selectedClass?.hitDie]);
+
+  // ─── Auto-cálculo: CD salvación y Bonif. ataque de hechizos ─────────────────
+  const spellAbilityKey = sheetData.spells.spellcastingAbility as AbilityKey | "";
+  const computedSpellSaveDc = useMemo(() => {
+    if (!spellAbilityKey || !(spellAbilityKey in sheetData.abilities)) return 0;
+    return 8 + computedProficiencyBonus + getModifier(sheetData.abilities[spellAbilityKey]);
+  }, [spellAbilityKey, computedProficiencyBonus, sheetData.abilities]);
+
+  const computedSpellAttackBonus = useMemo(() => {
+    if (!spellAbilityKey || !(spellAbilityKey in sheetData.abilities)) return 0;
+    return computedProficiencyBonus + getModifier(sheetData.abilities[spellAbilityKey]);
+  }, [spellAbilityKey, computedProficiencyBonus, sheetData.abilities]);
+
+  useEffect(() => {
+    if (
+      sheetData.spells.spellSaveDc === computedSpellSaveDc &&
+      sheetData.spells.spellAttackBonus === computedSpellAttackBonus
+    ) return;
+    setSheetData((prev) => ({
+      ...prev,
+      spells: { ...prev.spells, spellSaveDc: computedSpellSaveDc, spellAttackBonus: computedSpellAttackBonus },
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [computedSpellSaveDc, computedSpellAttackBonus]);
+
+  useEffect(() => {
+    if (!canPickSubclass && selectedSubclassId) {
+      setSelectedSubclassId("");
+      setSheetData((prev) => ({ ...prev, identity: { ...prev.identity, subclassName: "" } }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canPickSubclass]);
+
   useEffect(() => {
     loadAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -281,11 +529,13 @@ export default function CharacterSheetPage() {
     setError("");
 
     try {
-      const [charRes, classesRes, racesRes, backgroundsRes] = await Promise.all([
+      const [charRes, classesRes, racesRes, backgroundsRes, weaponsRes, spellsRes] = await Promise.all([
         fetch(`${API_URL}/characters/${characterId}`, { credentials: "include" }),
         fetch(`${API_URL}/presets/classes`, { credentials: "include" }),
         fetch(`${API_URL}/presets/races`, { credentials: "include" }),
         fetch(`${API_URL}/presets/backgrounds`, { credentials: "include" }),
+        fetch(`${API_URL}/presets/weapons`, { credentials: "include" }),
+        fetch(`${API_URL}/presets/spells`, { credentials: "include" }),
       ]);
 
       if (charRes.status === 401) {
@@ -293,11 +543,13 @@ export default function CharacterSheetPage() {
         return;
       }
 
-      const [charData, classesData, racesData, backgroundsData] = await Promise.all([
+      const [charData, classesData, racesData, backgroundsData, weaponsData, spellsData] = await Promise.all([
         charRes.json().catch(() => null),
         classesRes.json().catch(() => null),
         racesRes.json().catch(() => null),
         backgroundsRes.json().catch(() => null),
+        weaponsRes.json().catch(() => null),
+        spellsRes.json().catch(() => null),
       ]);
 
       if (!charRes.ok || !charData?.character) {
@@ -316,6 +568,8 @@ export default function CharacterSheetPage() {
       setClasses((classesData?.classes ?? []) as ClassPreset[]);
       setRaces((racesData?.races ?? []) as RacePreset[]);
       setBackgrounds((backgroundsData?.backgrounds ?? []) as BackgroundPreset[]);
+      setWeapons((weaponsData?.weapons ?? []) as WeaponPreset[]);
+      setSpellCatalog((spellsData?.spells ?? []) as SpellPreset[]);
     } catch {
       setError("No se pudo conectar con el backend.");
     } finally {
@@ -324,60 +578,144 @@ export default function CharacterSheetPage() {
   }
 
   // Cuando el jugador cambia de clase, auto-rellenar dados golpe, competencias de salvación y clase lanzadora
+  // Ref que recuerda qué clase fue la última cuyas competencias se aplicaron.
+  // null = todavía no se ha aplicado ninguna (incluye la carga inicial de un
+  // personaje ya existente, para que sus competencias se autocompleten sin
+  // que el jugador tenga que volver a tocar el selector de clase).
+  const appliedClassIdRef = useRef<string | null>(null);
+
   function handleClassChange(classId: string) {
     setSelectedClassId(classId);
     setSelectedSubclassId("");
+  }
 
-    const cls = classes.find((c) => c.id === classId);
-    if (!cls) return;
+  useEffect(() => {
+    if (!selectedClass) return;
+    if (appliedClassIdRef.current === selectedClassId) return;
 
-    const level = sheetData.identity.level;
-    const maxHp = cls.hitDie + getModifier(sheetData.abilities.constitution);
+    const previousClass = classes.find((c) => c.id === appliedClassIdRef.current) ?? null;
+    const cls = selectedClass;
 
-    // Auto-rellenar competencias de salvación
-    const newSavingThrows = { ...sheetData.proficiencies.savingThrows };
-    (Object.keys(newSavingThrows) as AbilityKey[]).forEach((k) => { newSavingThrows[k] = false; });
-    cls.savingThrows.forEach((s) => {
-      const key = s.toLowerCase() as AbilityKey;
-      if (key in newSavingThrows) newSavingThrows[key] = true;
+    setSheetData((prev) => {
+      const level = prev.identity.level;
+      const maxHp = cls.hitDie + getModifier(prev.abilities.constitution);
+
+      // Salvaciones: siempre se recalculan desde cero, son fijas por clase.
+      const newSavingThrows = { ...prev.proficiencies.savingThrows };
+      (Object.keys(newSavingThrows) as AbilityKey[]).forEach((k) => { newSavingThrows[k] = false; });
+      cls.savingThrows.forEach((s) => {
+        const key = matchAbilityKey(s);
+        if (key) newSavingThrows[key] = true;
+      });
+
+      // Armadura/armas/herramientas: quitar lo que otorgaba la clase anterior
+      // (si había) y agregar lo de la nueva, sin duplicar ni perder entradas manuales.
+      function replaceClassEntries(current: string[], removeList: string[], addList: string[]) {
+        const removeSet = new Set(removeList.map((s) => s.trim().toLowerCase()));
+        const kept = current.filter((entry) => !removeSet.has(entry.trim().toLowerCase()));
+        const addSet = new Set(kept.map((s) => s.trim().toLowerCase()));
+        const toAdd = addList.filter((entry) => !addSet.has(entry.trim().toLowerCase()));
+        return [...kept, ...toAdd];
+      }
+
+      const newArmor = replaceClassEntries(
+        prev.proficiencies.armor,
+        previousClass?.armorTraining ?? [],
+        cls.armorTraining ?? []
+      );
+      const newWeapons = replaceClassEntries(
+        prev.proficiencies.weapons,
+        previousClass?.weaponTraining ?? [],
+        cls.weaponTraining ?? []
+      );
+      const newTools = replaceClassEntries(
+        prev.proficiencies.tools,
+        previousClass?.toolTraining ?? [],
+        cls.toolTraining ?? []
+      );
+
+      // Las habilidades de clase son una ELECCIÓN del jugador, no se autocompletan.
+      // Si la clase anterior otorgaba habilidades elegidas que ya no son válidas
+      // para la nueva, se destildan para que no queden "colgadas".
+      const newSkills = { ...prev.proficiencies.skills };
+      if (previousClass) {
+        const previousKeys = new Set(
+          previousClass.skillChoices.map((s) => matchSkillKey(s)).filter((k): k is string => Boolean(k))
+        );
+        const newValidKeys = new Set(
+          cls.skillChoices.map((s) => matchSkillKey(s)).filter((k): k is string => Boolean(k))
+        );
+        previousKeys.forEach((key) => {
+          if (!newValidKeys.has(key)) {
+            newSkills[key] = false;
+          }
+        });
+      }
+
+      return {
+        ...prev,
+        identity: { ...prev.identity, className: cls.name, subclassName: previousClass ? "" : prev.identity.subclassName },
+        combat: {
+          ...prev.combat,
+          hitDiceTotal: `${level}d${cls.hitDie}`,
+          hitDiceCurrent: `${level}d${cls.hitDie}`,
+          maxHp,
+          currentHp: previousClass ? maxHp : prev.combat.currentHp,
+        },
+        proficiencies: {
+          ...prev.proficiencies,
+          savingThrows: newSavingThrows,
+          armor: newArmor,
+          weapons: newWeapons,
+          tools: newTools,
+          skills: newSkills,
+        },
+        spells: {
+          ...prev.spells,
+          spellcastingAbility: cls.spellcastingAbility ?? prev.spells.spellcastingAbility,
+          spellcastingClass: cls.name,
+        },
+      };
     });
 
-    setSheetData((prev) => ({
-      ...prev,
-      identity: { ...prev.identity, className: cls.name, subclassName: "" },
-      combat: {
-        ...prev.combat,
-        hitDiceTotal: `${level}d${cls.hitDie}`,
-        hitDiceCurrent: `${level}d${cls.hitDie}`,
-        maxHp: maxHp,
-        currentHp: maxHp,
-      },
-      proficiencies: { ...prev.proficiencies, savingThrows: newSavingThrows },
-      spells: {
-        ...prev.spells,
-        spellcastingAbility: cls.spellcastingAbility ?? prev.spells.spellcastingAbility,
-        spellcastingClass: cls.name,
-      },
-    }));
-  }
+    appliedClassIdRef.current = selectedClassId;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedClassId, classes]);
 
   // Cuando cambia la raza, auto-rellenar velocidad y bonificadores de atributo
   function handleRaceChange(raceId: string) {
+    // Capturamos la raza anterior ANTES de actualizar el estado, para poder
+    // revertir sus bonificadores y que no se acumulen con la nueva raza.
+    const previousRace = races.find((r) => r.id === selectedRaceId) ?? null;
+    const newRace = races.find((r) => r.id === raceId) ?? null;
+
     setSelectedRaceId(raceId);
-    const race = races.find((r) => r.id === raceId);
-    if (!race) return;
 
-    const newAbilities = { ...sheetData.abilities };
-    (Object.entries(race.abilityBonuses) as [AbilityKey, number][]).forEach(([key, bonus]) => {
-      newAbilities[key] = (newAbilities[key] ?? 10) + bonus;
+    setSheetData((prev) => {
+      const newAbilities = { ...prev.abilities };
+
+      // 1. Revertir los bonificadores de la raza anterior (si había una)
+      if (previousRace) {
+        (Object.entries(previousRace.abilityBonuses) as [AbilityKey, number][]).forEach(([key, bonus]) => {
+          newAbilities[key] = (newAbilities[key] ?? 10) - bonus;
+        });
+      }
+
+      // 2. Si se eligió una raza nueva, aplicar sus bonificadores sobre el valor ya limpio.
+      // Si se deseleccionó (raceId === ""), solo queda revertido, sin nada nuevo que sumar.
+      if (newRace) {
+        (Object.entries(newRace.abilityBonuses) as [AbilityKey, number][]).forEach(([key, bonus]) => {
+          newAbilities[key] = (newAbilities[key] ?? 10) + bonus;
+        });
+      }
+
+      return {
+        ...prev,
+        identity: { ...prev.identity, race: newRace?.name ?? "" },
+        combat: { ...prev.combat, speed: newRace?.speed ?? prev.combat.speed },
+        abilities: newAbilities,
+      };
     });
-
-    setSheetData((prev) => ({
-      ...prev,
-      identity: { ...prev.identity, race: race.name },
-      combat: { ...prev.combat, speed: race.speed },
-      abilities: newAbilities,
-    }));
   }
 
   // Cuando cambia el trasfondo, agregar las competencias en habilidades
@@ -474,6 +812,49 @@ export default function CharacterSheetPage() {
 
   function addAttack() { update({ ...sheetData, attacks: [...sheetData.attacks, { name: "", attackBonus: "", damage: "" }] }); }
   function removeAttack(i: number) { update({ ...sheetData, attacks: sheetData.attacks.filter((_, idx) => idx !== i) }); }
+
+  // Agrega un ataque desde el catálogo de armas, calculando bono y daño automáticamente
+  function addAttackFromCatalog() {
+    const weapon = weapons.find((w) => w.id === selectedWeaponCatalogId);
+    if (!weapon) return;
+
+    const ability = weapon.isFinesse ? weaponAbilityChoice : weapon.attackType === "ranged" ? "dexterity" : "strength";
+    const abilityMod = getModifier(sheetData.abilities[ability]);
+    const attackBonusValue = abilityMod + (weaponIsProficient ? sheetData.proficiencies.proficiencyBonus : 0);
+    const attackBonus = signed(attackBonusValue);
+
+    const damageModText = abilityMod !== 0 ? (abilityMod > 0 ? `+${abilityMod}` : `${abilityMod}`) : "";
+    const damage = `${weapon.damageDice}${damageModText} ${weapon.damageType}`;
+
+    update({
+      ...sheetData,
+      attacks: [...sheetData.attacks, { name: weapon.name, attackBonus, damage }],
+    });
+
+    setSelectedWeaponCatalogId("");
+  }
+
+  const selectedCatalogWeapon = weapons.find((w) => w.id === selectedWeaponCatalogId) ?? null;
+
+  function toggleSpell(level: string, spellName: string) {
+    const current = sheetData.spells.spellsByLevel[level] ?? [];
+    const isKnown = current.includes(spellName);
+    const updated = isKnown ? current.filter((n) => n !== spellName) : [...current, spellName];
+    update({
+      ...sheetData,
+      spells: { ...sheetData.spells, spellsByLevel: { ...sheetData.spells.spellsByLevel, [level]: updated } },
+    });
+  }
+
+  // Hechizos del catálogo disponibles para la clase del personaje
+  const classSpells = selectedClass
+    ? spellCatalog.filter((s) => s.classes.some((c) => c.toLowerCase() === selectedClass.name.toLowerCase()))
+    : [];
+
+  const filteredClassSpells = spellLevelFilter === "all"
+    ? classSpells
+    : classSpells.filter((s) => String(s.level) === spellLevelFilter);
+
   function addEquipment() { update({ ...sheetData, equipment: [...sheetData.equipment, { quantity: 1, name: "" }] }); }
   function removeEquipment(i: number) { update({ ...sheetData, equipment: sheetData.equipment.filter((_, idx) => idx !== i) }); }
   function addFeature() { update({ ...sheetData, features: [...sheetData.features, { name: "", description: "" }] }); }
@@ -628,15 +1009,20 @@ export default function CharacterSheetPage() {
                   )}
                 </div>
 
-                {/* Subclase — depende de clase seleccionada */}
+                {/* Subclase — depende de clase seleccionada y nivel */}
                 <div>
                   <label className="mb-1 block text-sm font-bold text-zinc-300">Subclase</label>
                   <select value={selectedSubclassId} onChange={(e) => handleSubclassChange(e.target.value)}
-                    disabled={availableSubclasses.length === 0}
+                    disabled={availableSubclasses.length === 0 || !canPickSubclass}
                     className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white outline-none transition focus:border-yellow-400 disabled:opacity-50">
                     <option value="">— Seleccionar —</option>
                     {availableSubclasses.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                   </select>
+                  {availableSubclasses.length > 0 && !canPickSubclass && (
+                    <p className="mt-1 text-xs text-yellow-400">
+                      Se desbloquea en el nivel {subclassUnlockLevel}.
+                    </p>
+                  )}
                 </div>
 
                 {/* Raza — selector de DB */}
@@ -670,6 +1056,92 @@ export default function CharacterSheetPage() {
                   onChange={(v) => update({ ...sheetData, identity: { ...sheetData.identity, experience: v } })} />
               </div>
 
+              {/* Descripción de la raza elegida */}
+              {(() => {
+                const race = races.find((r) => r.id === selectedRaceId);
+                if (!race) return null;
+                return (
+                  <div className="mt-4 rounded-2xl border border-green-400/30 bg-green-400/10 p-4">
+                    <p className="text-sm font-bold text-green-300">{race.name}</p>
+                    {race.appearance && (
+                      <p className="mt-1 text-xs text-green-200/90">{race.appearance}</p>
+                    )}
+                    {race.commonClasses.length > 0 && (
+                      <p className="mt-2 text-xs text-green-200/70">
+                        <span className="font-bold text-green-200">Clases más comunes:</span> {race.commonClasses.join(", ")}
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* Competencias otorgadas por la clase (automáticas) */}
+              {selectedClass && (
+                <div className="mt-4 rounded-2xl border border-sky-500/20 bg-sky-500/10 p-4">
+                  <p className="text-sm font-bold text-sky-300">Competencias de {selectedClass.name} (auto)</p>
+                  <div className="mt-2 grid gap-2 text-xs text-zinc-300 md:grid-cols-4">
+                    <p><span className="font-bold text-sky-200">Salvaciones:</span> {
+                      (Object.keys(sheetData.proficiencies.savingThrows) as AbilityKey[])
+                        .filter((k) => sheetData.proficiencies.savingThrows[k])
+                        .map((k) => abilityLabels.find((a) => a.key === k)?.label ?? k)
+                        .join(", ") || "Ninguna"
+                    }</p>
+                    <p><span className="font-bold text-sky-200">Armadura:</span> {selectedClass.armorTraining.join(", ") || "Ninguna"}</p>
+                    <p><span className="font-bold text-sky-200">Armas:</span> {selectedClass.weaponTraining.join(", ") || "Ninguna"}</p>
+                    <p><span className="font-bold text-sky-200">Herramientas:</span> {selectedClass.toolTraining.join(", ") || "Ninguna"}</p>
+                  </div>
+
+                  {selectedClass.skillChoices.length > 0 && (() => {
+                    const validKeys = selectedClass.skillChoices
+                      .map((s) => matchSkillKey(s))
+                      .filter((k): k is string => Boolean(k));
+                    const chosenCount = validKeys.filter((k) => sheetData.proficiencies.skills[k]).length;
+                    const limitReached = chosenCount >= selectedClass.skillChoiceCount;
+
+                    return (
+                      <div className="mt-3">
+                        <p className="text-xs font-bold text-sky-200">
+                          Habilidades de clase — elige {selectedClass.skillChoiceCount} ({chosenCount}/{selectedClass.skillChoiceCount})
+                        </p>
+                        <div className="mt-2 grid grid-cols-2 gap-1 md:grid-cols-3">
+                          {selectedClass.skillChoices.map((rawName) => {
+                            const key = matchSkillKey(rawName);
+                            if (!key) return (
+                              <p key={rawName} className="text-xs text-zinc-500">{rawName} (sin mapeo)</p>
+                            );
+                            const isChecked = Boolean(sheetData.proficiencies.skills[key]);
+                            const label = skillLabels.find((s) => s.key === key)?.label ?? rawName;
+                            return (
+                              <label key={key} className={[
+                                "flex cursor-pointer items-center gap-2 text-xs",
+                                isChecked ? "text-sky-200" : "text-zinc-400",
+                              ].join(" ")}>
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  disabled={!isChecked && limitReached}
+                                  onChange={(e) =>
+                                    update({
+                                      ...sheetData,
+                                      proficiencies: {
+                                        ...sheetData.proficiencies,
+                                        skills: { ...sheetData.proficiencies.skills, [key]: e.target.checked },
+                                      },
+                                    })
+                                  }
+                                  className="accent-sky-400"
+                                />
+                                {label}
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+
               {/* Rasgos de clase */}
               {selectedClass && (
                 <div className="mt-4 rounded-2xl border border-yellow-500/20 bg-yellow-500/10 p-4">
@@ -685,29 +1157,67 @@ export default function CharacterSheetPage() {
                   </div>
                 </div>
               )}
+
+              {/* Rasgos de subclase */}
+              {selectedSubclassId && (() => {
+                const subclass = availableSubclasses.find((s) => s.id === selectedSubclassId);
+                if (!subclass) return null;
+                const subFeatures = (subclass.features ?? []).filter((f) => f.level <= sheetData.identity.level);
+                return (
+                  <div className="mt-4 rounded-2xl border border-purple-500/20 bg-purple-500/10 p-4">
+                    <p className="text-sm font-bold text-purple-300">
+                      Rasgos de {subclass.name} hasta nivel {sheetData.identity.level}
+                    </p>
+                    <div className="mt-2 space-y-1">
+                      {subFeatures.length === 0 ? (
+                        <p className="text-xs text-zinc-500">Aún no tienes rasgos de esta subclase a este nivel.</p>
+                      ) : (
+                        subFeatures.map((f, i) => (
+                          <p key={i} className="text-xs text-zinc-300">
+                            <span className="font-bold text-purple-200">Nv.{f.level} {f.name}:</span> {f.summary}
+                          </p>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
             </Card>
 
             {/* Combate */}
             <Card title="Combate">
               <div className="grid gap-4 md:grid-cols-4">
-                <NumberField label="CA" value={sheetData.combat.armorClass}
-                  onChange={(v) => update({ ...sheetData, combat: { ...sheetData.combat, armorClass: v } })} />
-                <NumberField label="Iniciativa" value={sheetData.combat.initiative}
-                  onChange={(v) => update({ ...sheetData, combat: { ...sheetData.combat, initiative: v } })} />
+                <ReadOnlyField
+                  label="CA (auto)"
+                  value={sheetData.combat.armorClass}
+                  hint={unarmoredDefenseAbility
+                    ? `10 + Destreza + ${abilityLabels.find((a) => a.key === unarmoredDefenseAbility)?.label} (sin armadura)`
+                    : "10 + mod. Destreza"}
+                />
+                <ReadOnlyField label="Iniciativa (auto)" value={signed(sheetData.combat.initiative)} hint="Mod. Destreza" />
                 <NumberField label="Velocidad (ft)" value={sheetData.combat.speed}
                   onChange={(v) => update({ ...sheetData, combat: { ...sheetData.combat, speed: v } })} />
-                <NumberField label="PG máximos" value={sheetData.combat.maxHp}
-                  onChange={(v) => update({ ...sheetData, combat: { ...sheetData.combat, maxHp: v } })} />
+                <div>
+                  <NumberField label="PG máximos" value={sheetData.combat.maxHp}
+                    onChange={(v) => update({ ...sheetData, combat: { ...sheetData.combat, maxHp: v } })} />
+                  {suggestedMaxHp !== null && (
+                    <button
+                      type="button"
+                      onClick={() => update({ ...sheetData, combat: { ...sheetData.combat, maxHp: suggestedMaxHp, currentHp: suggestedMaxHp } })}
+                      className="mt-1 text-xs font-semibold text-yellow-400 underline decoration-dotted hover:text-yellow-300"
+                    >
+                      Usar sugerido: {suggestedMaxHp} (con Constitución)
+                    </button>
+                  )}
+                </div>
                 <NumberField label="PG actuales" value={sheetData.combat.currentHp}
                   onChange={(v) => update({ ...sheetData, combat: { ...sheetData.combat, currentHp: v } })} />
                 <NumberField label="PG temporales" value={sheetData.combat.temporaryHp}
                   onChange={(v) => update({ ...sheetData, combat: { ...sheetData.combat, temporaryHp: v } })} />
-                <TextField label="Dados golpe total" value={sheetData.combat.hitDiceTotal}
-                  onChange={(v) => update({ ...sheetData, combat: { ...sheetData.combat, hitDiceTotal: v } })} />
+                <ReadOnlyField label="Dados golpe total" value={sheetData.combat.hitDiceTotal} />
                 <TextField label="Dados golpe actual" value={sheetData.combat.hitDiceCurrent}
                   onChange={(v) => update({ ...sheetData, combat: { ...sheetData.combat, hitDiceCurrent: v } })} />
-                <NumberField label="Bonif. competencia" value={sheetData.proficiencies.proficiencyBonus}
-                  onChange={(v) => update({ ...sheetData, proficiencies: { ...sheetData.proficiencies, proficiencyBonus: v } })} />
+                <ReadOnlyField label="Bonif. competencia (auto)" value={signed(sheetData.proficiencies.proficiencyBonus)} hint="Según nivel" />
                 <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4">
                   <p className="text-sm font-bold text-zinc-400">Percepción pasiva</p>
                   <p className="mt-2 text-3xl font-black">{passivePerception}</p>
@@ -722,8 +1232,78 @@ export default function CharacterSheetPage() {
             {/* Ataques */}
             <Card title="Ataques" action={
               <button type="button" onClick={addAttack}
-                className="rounded-xl bg-yellow-500 px-3 py-2 text-sm font-bold text-zinc-950 transition hover:bg-yellow-400">+ Ataque</button>
+                className="rounded-xl bg-yellow-500 px-3 py-2 text-sm font-bold text-zinc-950 transition hover:bg-yellow-400">+ Ataque manual</button>
             }>
+              {/* Selector desde el catálogo de armas */}
+              <div className="mb-4 rounded-2xl border border-yellow-500/20 bg-yellow-500/5 p-4">
+                <p className="text-sm font-bold text-yellow-200">Agregar desde el catálogo de armas</p>
+                {sheetData.proficiencies.weapons.length > 0 && (
+                  <p className="mt-1 text-xs text-zinc-500">
+                    Competencias de arma: {sheetData.proficiencies.weapons.join(", ")}
+                  </p>
+                )}
+                <div className="mt-3 grid gap-3 md:grid-cols-[1fr_auto_auto_auto]">
+                  <select value={selectedWeaponCatalogId}
+                    onChange={(e) => {
+                      const id = e.target.value;
+                      setSelectedWeaponCatalogId(id);
+                      const w = weapons.find((weapon) => weapon.id === id);
+                      if (w) setWeaponIsProficient(isWeaponProficient(w, sheetData.proficiencies.weapons));
+                    }}
+                    className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none transition focus:border-yellow-400">
+                    <option value="">— Selecciona un arma —</option>
+                    <optgroup label="Armas simples">
+                      {weapons.filter((w) => w.category === "simple").map((w) => {
+                        const compatible = isWeaponProficient(w, sheetData.proficiencies.weapons);
+                        return (
+                          <option key={w.id} value={w.id}>
+                            {compatible ? "✓ " : "— "}{w.name} — {w.damageDice} {w.damageType}
+                            {!compatible ? " (sin competencia)" : ""}
+                          </option>
+                        );
+                      })}
+                    </optgroup>
+                    <optgroup label="Armas marciales">
+                      {weapons.filter((w) => w.category === "martial").map((w) => {
+                        const compatible = isWeaponProficient(w, sheetData.proficiencies.weapons);
+                        return (
+                          <option key={w.id} value={w.id}>
+                            {compatible ? "✓ " : "— "}{w.name} — {w.damageDice} {w.damageType}
+                            {!compatible ? " (sin competencia)" : ""}
+                          </option>
+                        );
+                      })}
+                    </optgroup>
+                  </select>
+
+                  {selectedCatalogWeapon?.isFinesse && (
+                    <select value={weaponAbilityChoice} onChange={(e) => setWeaponAbilityChoice(e.target.value as "strength" | "dexterity")}
+                      className="rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none transition focus:border-yellow-400">
+                      <option value="strength">Fuerza</option>
+                      <option value="dexterity">Destreza</option>
+                    </select>
+                  )}
+
+                  <label className="flex items-center gap-2 rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-300">
+                    <input type="checkbox" checked={weaponIsProficient} onChange={(e) => setWeaponIsProficient(e.target.checked)}
+                      className="accent-yellow-400" />
+                    Competente
+                  </label>
+
+                  <button type="button" onClick={addAttackFromCatalog} disabled={!selectedWeaponCatalogId}
+                    className="rounded-xl bg-yellow-500 px-4 py-2 text-sm font-bold text-zinc-950 transition hover:bg-yellow-400 disabled:cursor-not-allowed disabled:opacity-50">
+                    Agregar
+                  </button>
+                </div>
+
+                {selectedCatalogWeapon && (
+                  <p className="mt-2 text-xs text-zinc-400">
+                    {selectedCatalogWeapon.properties.join(", ") || "Sin propiedades especiales"}
+                    {selectedCatalogWeapon.rangeNormal ? ` · Alcance ${selectedCatalogWeapon.rangeNormal}/${selectedCatalogWeapon.rangeLong} ft` : ""}
+                  </p>
+                )}
+              </div>
+
               <div className="space-y-3">
                 {sheetData.attacks.length === 0 ? <EmptyBox text="Sin ataques registrados." /> :
                   sheetData.attacks.map((attack, i) => (
@@ -828,12 +1408,17 @@ export default function CharacterSheetPage() {
               <div className="grid gap-4 md:grid-cols-4">
                 <TextField label="Clase lanzadora" value={sheetData.spells.spellcastingClass}
                   onChange={(v) => update({ ...sheetData, spells: { ...sheetData.spells, spellcastingClass: v } })} />
-                <TextField label="Característica" value={sheetData.spells.spellcastingAbility}
-                  onChange={(v) => update({ ...sheetData, spells: { ...sheetData.spells, spellcastingAbility: v } })} />
-                <NumberField label="CD salvación" value={sheetData.spells.spellSaveDc}
-                  onChange={(v) => update({ ...sheetData, spells: { ...sheetData.spells, spellSaveDc: v } })} />
-                <NumberField label="Bonif. ataque" value={sheetData.spells.spellAttackBonus}
-                  onChange={(v) => update({ ...sheetData, spells: { ...sheetData.spells, spellAttackBonus: v } })} />
+                <div>
+                  <label className="mb-1 block text-sm font-bold text-zinc-300">Característica</label>
+                  <select value={sheetData.spells.spellcastingAbility}
+                    onChange={(e) => update({ ...sheetData, spells: { ...sheetData.spells, spellcastingAbility: e.target.value } })}
+                    className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white outline-none transition focus:border-yellow-400">
+                    <option value="">— Ninguna —</option>
+                    {abilityLabels.map((a) => <option key={a.key} value={a.key}>{a.label}</option>)}
+                  </select>
+                </div>
+                <ReadOnlyField label="CD salvación (auto)" value={sheetData.spells.spellSaveDc} hint="8 + competencia + mod." />
+                <ReadOnlyField label="Bonif. ataque (auto)" value={signed(sheetData.spells.spellAttackBonus)} hint="Competencia + mod." />
               </div>
 
               {/* Espacios de conjuro */}
@@ -854,15 +1439,74 @@ export default function CharacterSheetPage() {
                 })}
               </div>
 
-              {/* Lista de conjuros por nivel */}
-              <div className="mt-6 grid gap-4 md:grid-cols-2">
-                {[["0", "Trucos"], ["1", "Nivel 1"], ["2", "Nivel 2"], ["3", "Nivel 3"],
-                  ["4", "Nivel 4"], ["5", "Nivel 5"], ["6", "Nivel 6"], ["7", "Nivel 7"],
-                  ["8", "Nivel 8"], ["9", "Nivel 9"]].map(([lvl, label]) => (
-                  <TextAreaField key={lvl} label={`Conjuros — ${label}`}
-                    value={joinLines(sheetData.spells.spellsByLevel[lvl] ?? [])} rows={4}
-                    onChange={(v) => update({ ...sheetData, spells: { ...sheetData.spells, spellsByLevel: { ...sheetData.spells.spellsByLevel, [lvl]: splitLines(v) } } })} />
-                ))}
+              {/* Selector de conjuros filtrado por clase */}
+              <div className="mt-6 rounded-2xl border border-yellow-500/20 bg-yellow-500/5 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-sm font-bold text-yellow-200">
+                    {selectedClass
+                      ? `Conjuros disponibles para ${selectedClass.name} (${classSpells.length})`
+                      : "Selecciona una clase para ver sus conjuros disponibles"}
+                  </p>
+                  {selectedClass && (
+                    <select value={spellLevelFilter} onChange={(e) => setSpellLevelFilter(e.target.value)}
+                      className="rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none focus:border-yellow-400">
+                      <option value="all">Todos los niveles</option>
+                      <option value="0">Trucos</option>
+                      {Array.from({ length: 9 }, (_, i) => i + 1).map((n) => (
+                        <option key={n} value={n}>Nivel {n}</option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+
+                {selectedClass && classSpells.length === 0 && (
+                  <p className="mt-3 text-xs text-zinc-500">
+                    No hay conjuros en el catálogo para esta clase todavía. Un admin puede agregarlos en /admin/spells.
+                  </p>
+                )}
+
+                {selectedClass && filteredClassSpells.length > 0 && (
+                  <div className="mt-3 max-h-96 space-y-1 overflow-y-auto">
+                    {filteredClassSpells.map((spell) => {
+                      const level = String(spell.level);
+                      const isKnown = (sheetData.spells.spellsByLevel[level] ?? []).includes(spell.name);
+                      return (
+                        <label key={spell.id} className={[
+                          "flex cursor-pointer items-start gap-3 rounded-xl px-3 py-2 text-sm transition",
+                          isKnown ? "bg-yellow-500/20 text-yellow-100" : "text-zinc-300 hover:bg-zinc-800",
+                        ].join(" ")}>
+                          <input type="checkbox" checked={isKnown}
+                            onChange={() => toggleSpell(level, spell.name)}
+                            className="mt-0.5 accent-yellow-400" />
+                          <span className="flex-1">
+                            <span className="font-bold">{spell.name}</span>{" "}
+                            <span className="text-xs text-zinc-500">
+                              {spell.level === 0 ? "(truco)" : `(Nv.${spell.level})`} · {spell.school}
+                              {spell.damageDice ? ` · ${spell.damageDice} ${spell.damageType}` : ""}
+                              {spell.healingDice ? ` · Cura ${spell.healingDice}` : ""}
+                            </span>
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Conjuros adicionales / caseros — texto libre por nivel */}
+              <div className="mt-6">
+                <p className="mb-2 text-sm font-bold text-zinc-300">
+                  Conjuros adicionales (texto libre, para hechizos caseros o fuera del catálogo)
+                </p>
+                <div className="grid gap-4 md:grid-cols-2">
+                  {[["0", "Trucos"], ["1", "Nivel 1"], ["2", "Nivel 2"], ["3", "Nivel 3"],
+                    ["4", "Nivel 4"], ["5", "Nivel 5"], ["6", "Nivel 6"], ["7", "Nivel 7"],
+                    ["8", "Nivel 8"], ["9", "Nivel 9"]].map(([lvl, label]) => (
+                    <TextAreaField key={lvl} label={`Conjuros — ${label}`}
+                      value={joinLines(sheetData.spells.spellsByLevel[lvl] ?? [])} rows={3}
+                      onChange={(v) => update({ ...sheetData, spells: { ...sheetData.spells, spellsByLevel: { ...sheetData.spells.spellsByLevel, [lvl]: splitLines(v) } } })} />
+                  ))}
+                </div>
               </div>
             </Card>
 
@@ -904,6 +1548,18 @@ function NumberField({ label, value, onChange }: { label: string; value: number;
       <input type="number" value={Number.isFinite(value) ? value : 0} onChange={(e) => onChange(Number(e.target.value))}
         className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white outline-none transition focus:border-yellow-400" />
     </label>
+  );
+}
+
+function ReadOnlyField({ label, value, hint }: { label: string; value: string | number; hint?: string }) {
+  return (
+    <div className="block">
+      <span className="mb-1 block text-sm font-bold text-zinc-300">{label}</span>
+      <div className="w-full rounded-xl border border-yellow-500/20 bg-yellow-500/5 px-3 py-2 font-bold text-yellow-200">
+        {value}
+      </div>
+      {hint && <span className="mt-0.5 block text-xs text-zinc-500">{hint}</span>}
+    </div>
   );
 }
 

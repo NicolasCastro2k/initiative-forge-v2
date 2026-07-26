@@ -122,12 +122,32 @@ export default function AdminUsersPage() {
             </p>
           </div>
 
-          <a
-            href="/dashboard"
-            className="rounded-xl border border-zinc-700 px-4 py-3 font-semibold text-zinc-200 transition hover:bg-zinc-800"
-          >
-            Volver al dashboard
-          </a>
+          <div className="flex gap-3">
+            <a
+              href="/admin/weapons"
+              className="rounded-xl border border-zinc-700 px-4 py-3 font-semibold text-zinc-200 transition hover:bg-zinc-800"
+            >
+              Armas
+            </a>
+            <a
+              href="/admin/spells"
+              className="rounded-xl border border-zinc-700 px-4 py-3 font-semibold text-zinc-200 transition hover:bg-zinc-800"
+            >
+              Hechizos
+            </a>
+            <a
+              href="/admin/races"
+              className="rounded-xl border border-zinc-700 px-4 py-3 font-semibold text-zinc-200 transition hover:bg-zinc-800"
+            >
+              Razas
+            </a>
+            <a
+              href="/dashboard"
+              className="rounded-xl border border-zinc-700 px-4 py-3 font-semibold text-zinc-200 transition hover:bg-zinc-800"
+            >
+              Volver al dashboard
+            </a>
+          </div>
         </header>
 
         <div className="grid gap-6 lg:grid-cols-[420px_1fr]">

@@ -19,7 +19,10 @@ export type CombatEventName =
   | "map:changed"
   | "combatant:moved"
   | "spell:cast"
-  | "combat:log";
+  | "combat:log"
+  | "dice:rolled"
+  | "party:leveledUp"
+  | "party:rested";
 
 const COOKIE_NAME = "initiative_forge_session";
 

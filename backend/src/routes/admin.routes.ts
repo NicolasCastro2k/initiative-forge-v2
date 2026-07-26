@@ -73,3 +73,376 @@ adminRouter.get("/users", async (_req, res) => {
     users,
   });
 });
+
+// ─── Administración de armas (WeaponPreset) ────────────────────────────────────
+
+function slugify(value: string) {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // quitar acentos
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+}
+
+adminRouter.get("/weapons", async (_req, res) => {
+  try {
+    const weapons = await prisma.weaponPreset.findMany({
+      orderBy: [{ category: "asc" }, { name: "asc" }],
+    });
+
+    return res.json({ weapons });
+  } catch (error) {
+    console.error("Error en GET /admin/weapons:", error);
+    return res.status(500).json({ message: "Error interno al cargar armas." });
+  }
+});
+
+adminRouter.post("/weapons", async (req, res) => {
+  try {
+    const name = String(req.body.name ?? "").trim();
+    const category = String(req.body.category ?? "simple");
+    const attackType = String(req.body.attackType ?? "melee");
+    const damageDice = String(req.body.damageDice ?? "").trim();
+    const damageType = String(req.body.damageType ?? "").trim();
+
+    if (!name || !damageDice || !damageType) {
+      return res.status(400).json({
+        message: "Nombre, dado de daño y tipo de daño son obligatorios.",
+      });
+    }
+
+    let id = slugify(name);
+
+    const existing = await prisma.weaponPreset.findUnique({ where: { id } });
+    if (existing) {
+      id = `${id}-${Date.now()}`;
+    }
+
+    const weapon = await prisma.weaponPreset.create({
+      data: {
+        id,
+        name,
+        category,
+        attackType,
+        damageDice,
+        versatileDice: req.body.versatileDice ? String(req.body.versatileDice).trim() : null,
+        damageType,
+        properties: Array.isArray(req.body.properties) ? req.body.properties : [],
+        rangeNormal: req.body.rangeNormal !== undefined && req.body.rangeNormal !== "" ? Number(req.body.rangeNormal) : null,
+        rangeLong: req.body.rangeLong !== undefined && req.body.rangeLong !== "" ? Number(req.body.rangeLong) : null,
+        isFinesse: Boolean(req.body.isFinesse),
+        isTwoHanded: Boolean(req.body.isTwoHanded),
+        isLight: Boolean(req.body.isLight),
+        isHeavy: Boolean(req.body.isHeavy),
+        isReach: Boolean(req.body.isReach),
+        isThrown: Boolean(req.body.isThrown),
+        requiresAmmo: Boolean(req.body.requiresAmmo),
+        requiresLoading: Boolean(req.body.requiresLoading),
+        isSpecial: Boolean(req.body.isSpecial),
+        source: req.body.source ? String(req.body.source) : "Personalizada",
+      },
+    });
+
+    return res.status(201).json({ weapon });
+  } catch (error) {
+    console.error("Error en POST /admin/weapons:", error);
+    return res.status(500).json({ message: "Error interno al crear el arma." });
+  }
+});
+
+adminRouter.put("/weapons/:weaponId", async (req, res) => {
+  try {
+    const weaponId = String(req.params.weaponId);
+
+    const existing = await prisma.weaponPreset.findUnique({ where: { id: weaponId } });
+    if (!existing) {
+      return res.status(404).json({ message: "Arma no encontrada." });
+    }
+
+    const weapon = await prisma.weaponPreset.update({
+      where: { id: weaponId },
+      data: {
+        name: req.body.name !== undefined ? String(req.body.name).trim() : existing.name,
+        category: req.body.category !== undefined ? String(req.body.category) : existing.category,
+        attackType: req.body.attackType !== undefined ? String(req.body.attackType) : existing.attackType,
+        damageDice: req.body.damageDice !== undefined ? String(req.body.damageDice).trim() : existing.damageDice,
+        versatileDice: req.body.versatileDice !== undefined ? (req.body.versatileDice ? String(req.body.versatileDice).trim() : null) : existing.versatileDice,
+        damageType: req.body.damageType !== undefined ? String(req.body.damageType).trim() : existing.damageType,
+        properties: req.body.properties !== undefined ? req.body.properties : existing.properties,
+        rangeNormal: req.body.rangeNormal !== undefined ? (req.body.rangeNormal === "" ? null : Number(req.body.rangeNormal)) : existing.rangeNormal,
+        rangeLong: req.body.rangeLong !== undefined ? (req.body.rangeLong === "" ? null : Number(req.body.rangeLong)) : existing.rangeLong,
+        isFinesse: req.body.isFinesse !== undefined ? Boolean(req.body.isFinesse) : existing.isFinesse,
+        isTwoHanded: req.body.isTwoHanded !== undefined ? Boolean(req.body.isTwoHanded) : existing.isTwoHanded,
+        isLight: req.body.isLight !== undefined ? Boolean(req.body.isLight) : existing.isLight,
+        isHeavy: req.body.isHeavy !== undefined ? Boolean(req.body.isHeavy) : existing.isHeavy,
+        isReach: req.body.isReach !== undefined ? Boolean(req.body.isReach) : existing.isReach,
+        isThrown: req.body.isThrown !== undefined ? Boolean(req.body.isThrown) : existing.isThrown,
+        requiresAmmo: req.body.requiresAmmo !== undefined ? Boolean(req.body.requiresAmmo) : existing.requiresAmmo,
+        requiresLoading: req.body.requiresLoading !== undefined ? Boolean(req.body.requiresLoading) : existing.requiresLoading,
+        isSpecial: req.body.isSpecial !== undefined ? Boolean(req.body.isSpecial) : existing.isSpecial,
+        source: req.body.source !== undefined ? String(req.body.source) : existing.source,
+      },
+    });
+
+    return res.json({ weapon });
+  } catch (error) {
+    console.error("Error en PUT /admin/weapons/:weaponId:", error);
+    return res.status(500).json({ message: "Error interno al actualizar el arma." });
+  }
+});
+
+adminRouter.delete("/weapons/:weaponId", async (req, res) => {
+  try {
+    const weaponId = String(req.params.weaponId);
+
+    const existing = await prisma.weaponPreset.findUnique({ where: { id: weaponId } });
+    if (!existing) {
+      return res.status(404).json({ message: "Arma no encontrada." });
+    }
+
+    await prisma.weaponPreset.delete({ where: { id: weaponId } });
+
+    return res.json({ ok: true, message: "Arma eliminada." });
+  } catch (error) {
+    console.error("Error en DELETE /admin/weapons/:weaponId:", error);
+    return res.status(500).json({ message: "Error interno al eliminar el arma." });
+  }
+});
+
+// ─── Administración de hechizos (SpellPreset) ──────────────────────────────────
+
+adminRouter.get("/spells", async (_req, res) => {
+  try {
+    const spells = await prisma.spellPreset.findMany({
+      orderBy: [{ level: "asc" }, { name: "asc" }],
+    });
+
+    return res.json({ spells });
+  } catch (error) {
+    console.error("Error en GET /admin/spells:", error);
+    return res.status(500).json({ message: "Error interno al cargar hechizos." });
+  }
+});
+
+adminRouter.post("/spells", async (req, res) => {
+  try {
+    const name = String(req.body.name ?? "").trim();
+    const level = Number(req.body.level ?? 0);
+    const school = String(req.body.school ?? "").trim();
+    const castingTime = String(req.body.castingTime ?? "").trim();
+    const range = String(req.body.range ?? "").trim();
+    const duration = String(req.body.duration ?? "").trim();
+    const description = String(req.body.description ?? "").trim();
+
+    if (!name || !school || !castingTime || !range || !duration || !description) {
+      return res.status(400).json({
+        message: "Nombre, escuela, tiempo, alcance, duración y descripción son obligatorios.",
+      });
+    }
+
+    let id = slugify(name);
+    const existing = await prisma.spellPreset.findUnique({ where: { id } });
+    if (existing) {
+      id = `${id}-${Date.now()}`;
+    }
+
+    const spell = await prisma.spellPreset.create({
+      data: {
+        id,
+        name,
+        level,
+        school,
+        castingTime,
+        range,
+        rangeFeet: req.body.rangeFeet !== undefined && req.body.rangeFeet !== "" ? Number(req.body.rangeFeet) : null,
+        components: Array.isArray(req.body.components) ? req.body.components : [],
+        duration,
+        concentration: Boolean(req.body.concentration),
+        ritual: Boolean(req.body.ritual),
+        classes: Array.isArray(req.body.classes) ? req.body.classes : [],
+        description,
+        attackType: req.body.attackType || null,
+        savingThrow: req.body.savingThrow || null,
+        damageDice: req.body.damageDice ? String(req.body.damageDice).trim() : null,
+        damageType: req.body.damageType ? String(req.body.damageType).trim() : null,
+        healingDice: req.body.healingDice ? String(req.body.healingDice).trim() : null,
+        areaShape: req.body.areaShape || null,
+        areaSizeFeet: req.body.areaSizeFeet !== undefined && req.body.areaSizeFeet !== "" ? Number(req.body.areaSizeFeet) : null,
+        higherLevels: req.body.higherLevels ? String(req.body.higherLevels).trim() : null,
+        notes: req.body.notes ? String(req.body.notes).trim() : null,
+        source: req.body.source ? String(req.body.source) : "Personalizado",
+      },
+    });
+
+    return res.status(201).json({ spell });
+  } catch (error) {
+    console.error("Error en POST /admin/spells:", error);
+    return res.status(500).json({ message: "Error interno al crear el hechizo." });
+  }
+});
+
+adminRouter.put("/spells/:spellId", async (req, res) => {
+  try {
+    const spellId = String(req.params.spellId);
+
+    const existing = await prisma.spellPreset.findUnique({ where: { id: spellId } });
+    if (!existing) {
+      return res.status(404).json({ message: "Hechizo no encontrado." });
+    }
+
+    const spell = await prisma.spellPreset.update({
+      where: { id: spellId },
+      data: {
+        name: req.body.name !== undefined ? String(req.body.name).trim() : existing.name,
+        level: req.body.level !== undefined ? Number(req.body.level) : existing.level,
+        school: req.body.school !== undefined ? String(req.body.school).trim() : existing.school,
+        castingTime: req.body.castingTime !== undefined ? String(req.body.castingTime).trim() : existing.castingTime,
+        range: req.body.range !== undefined ? String(req.body.range).trim() : existing.range,
+        rangeFeet: req.body.rangeFeet !== undefined ? (req.body.rangeFeet === "" ? null : Number(req.body.rangeFeet)) : existing.rangeFeet,
+        components: req.body.components !== undefined ? req.body.components : existing.components,
+        duration: req.body.duration !== undefined ? String(req.body.duration).trim() : existing.duration,
+        concentration: req.body.concentration !== undefined ? Boolean(req.body.concentration) : existing.concentration,
+        ritual: req.body.ritual !== undefined ? Boolean(req.body.ritual) : existing.ritual,
+        classes: req.body.classes !== undefined ? req.body.classes : existing.classes,
+        description: req.body.description !== undefined ? String(req.body.description).trim() : existing.description,
+        attackType: req.body.attackType !== undefined ? (req.body.attackType || null) : existing.attackType,
+        savingThrow: req.body.savingThrow !== undefined ? (req.body.savingThrow || null) : existing.savingThrow,
+        damageDice: req.body.damageDice !== undefined ? (req.body.damageDice ? String(req.body.damageDice).trim() : null) : existing.damageDice,
+        damageType: req.body.damageType !== undefined ? (req.body.damageType ? String(req.body.damageType).trim() : null) : existing.damageType,
+        healingDice: req.body.healingDice !== undefined ? (req.body.healingDice ? String(req.body.healingDice).trim() : null) : existing.healingDice,
+        areaShape: req.body.areaShape !== undefined ? (req.body.areaShape || null) : existing.areaShape,
+        areaSizeFeet: req.body.areaSizeFeet !== undefined ? (req.body.areaSizeFeet === "" ? null : Number(req.body.areaSizeFeet)) : existing.areaSizeFeet,
+        higherLevels: req.body.higherLevels !== undefined ? (req.body.higherLevels ? String(req.body.higherLevels).trim() : null) : existing.higherLevels,
+        notes: req.body.notes !== undefined ? (req.body.notes ? String(req.body.notes).trim() : null) : existing.notes,
+        source: req.body.source !== undefined ? String(req.body.source) : existing.source,
+      },
+    });
+
+    return res.json({ spell });
+  } catch (error) {
+    console.error("Error en PUT /admin/spells/:spellId:", error);
+    return res.status(500).json({ message: "Error interno al actualizar el hechizo." });
+  }
+});
+
+adminRouter.delete("/spells/:spellId", async (req, res) => {
+  try {
+    const spellId = String(req.params.spellId);
+
+    const existing = await prisma.spellPreset.findUnique({ where: { id: spellId } });
+    if (!existing) {
+      return res.status(404).json({ message: "Hechizo no encontrado." });
+    }
+
+    await prisma.spellPreset.delete({ where: { id: spellId } });
+
+    return res.json({ ok: true, message: "Hechizo eliminado." });
+  } catch (error) {
+    console.error("Error en DELETE /admin/spells/:spellId:", error);
+    return res.status(500).json({ message: "Error interno al eliminar el hechizo." });
+  }
+});
+
+// ─── Administración de razas (RacePreset) ──────────────────────────────────────
+
+adminRouter.get("/races", async (_req, res) => {
+  try {
+    const races = await prisma.racePreset.findMany({
+      orderBy: { name: "asc" },
+    });
+
+    return res.json({ races });
+  } catch (error) {
+    console.error("Error en GET /admin/races:", error);
+    return res.status(500).json({ message: "Error interno al cargar razas." });
+  }
+});
+
+adminRouter.post("/races", async (req, res) => {
+  try {
+    const name = String(req.body.name ?? "").trim();
+    const appearance = String(req.body.appearance ?? "").trim();
+
+    if (!name) {
+      return res.status(400).json({ message: "El nombre de la raza es obligatorio." });
+    }
+
+    let id = slugify(name);
+    const existing = await prisma.racePreset.findUnique({ where: { id } });
+    if (existing) {
+      id = `${id}-${Date.now()}`;
+    }
+
+    const race = await prisma.racePreset.create({
+      data: {
+        id,
+        name,
+        source: req.body.source ? String(req.body.source) : "Personalizada",
+        speed: req.body.speed !== undefined ? Number(req.body.speed) : 30,
+        size: req.body.size ? String(req.body.size) : "Medium",
+        abilityBonuses: req.body.abilityBonuses ?? {},
+        traits: Array.isArray(req.body.traits) ? req.body.traits : [],
+        languages: Array.isArray(req.body.languages) ? req.body.languages : [],
+        appearance,
+        commonClasses: Array.isArray(req.body.commonClasses) ? req.body.commonClasses : [],
+        isSrd: Boolean(req.body.isSrd),
+      },
+    });
+
+    return res.status(201).json({ race });
+  } catch (error) {
+    console.error("Error en POST /admin/races:", error);
+    return res.status(500).json({ message: "Error interno al crear la raza." });
+  }
+});
+
+adminRouter.put("/races/:raceId", async (req, res) => {
+  try {
+    const raceId = String(req.params.raceId);
+
+    const existing = await prisma.racePreset.findUnique({ where: { id: raceId } });
+    if (!existing) {
+      return res.status(404).json({ message: "Raza no encontrada." });
+    }
+
+    const race = await prisma.racePreset.update({
+      where: { id: raceId },
+      data: {
+        name: req.body.name !== undefined ? String(req.body.name).trim() : existing.name,
+        source: req.body.source !== undefined ? String(req.body.source) : existing.source,
+        speed: req.body.speed !== undefined ? Number(req.body.speed) : existing.speed,
+        size: req.body.size !== undefined ? String(req.body.size) : existing.size,
+        abilityBonuses: req.body.abilityBonuses !== undefined ? req.body.abilityBonuses : existing.abilityBonuses,
+        traits: req.body.traits !== undefined ? req.body.traits : existing.traits,
+        languages: req.body.languages !== undefined ? req.body.languages : existing.languages,
+        appearance: req.body.appearance !== undefined ? String(req.body.appearance).trim() : existing.appearance,
+        commonClasses: req.body.commonClasses !== undefined ? req.body.commonClasses : existing.commonClasses,
+        isSrd: req.body.isSrd !== undefined ? Boolean(req.body.isSrd) : existing.isSrd,
+      },
+    });
+
+    return res.json({ race });
+  } catch (error) {
+    console.error("Error en PUT /admin/races/:raceId:", error);
+    return res.status(500).json({ message: "Error interno al actualizar la raza." });
+  }
+});
+
+adminRouter.delete("/races/:raceId", async (req, res) => {
+  try {
+    const raceId = String(req.params.raceId);
+
+    const existing = await prisma.racePreset.findUnique({ where: { id: raceId } });
+    if (!existing) {
+      return res.status(404).json({ message: "Raza no encontrada." });
+    }
+
+    await prisma.racePreset.delete({ where: { id: raceId } });
+
+    return res.json({ ok: true, message: "Raza eliminada." });
+  } catch (error) {
+    console.error("Error en DELETE /admin/races/:raceId:", error);
+    return res.status(500).json({ message: "Error interno al eliminar la raza." });
+  }
+});

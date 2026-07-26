@@ -4,6 +4,8 @@ import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
 import { createServer } from "node:http";
 import { combatActionsRouter } from "./routes/combat.actions.routes.js";
+import { playerRouter } from "./routes/player.routes.js";
+import { dmRouter } from "./routes/dm.routes.js";
 import { authRouter } from "./routes/auth.routes.js";
 import { adminRouter } from "./routes/admin.routes.js";
 import { gamesRouter } from "./routes/games.routes.js";
@@ -70,6 +72,8 @@ app.use("/", mapsRouter);
 app.use("/", charactersRouter);
 app.use("/", combatRouter);
 app.use("/", combatActionsRouter);
+app.use("/", playerRouter);
+app.use("/", dmRouter);
 app.use("/", presetsRouter);
 
 // Usar httpServer en vez de app.listen para que socket.io funcione

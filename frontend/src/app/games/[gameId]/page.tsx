@@ -257,6 +257,15 @@ export default function GameDetailPage() {
                 Personajes
               </a>
 
+              {!isDm && (
+                <a
+                  href={`/games/${game.id}/player`}
+                  className="rounded-xl border border-yellow-500/40 bg-yellow-500/10 px-4 py-3 text-center font-bold text-yellow-300 transition hover:bg-yellow-500/20"
+                >
+                  Pantalla de jugador
+                </a>
+              )}
+
               <a
                 href={`/games/${game.id}/combat`}
                 className="rounded-xl bg-yellow-500 px-4 py-3 text-center font-bold text-zinc-950 transition hover:bg-yellow-400"
@@ -463,6 +472,13 @@ export default function GameDetailPage() {
                 <h2 className="text-xl font-black">Administrar partida</h2>
 
                 <div className="mt-4 space-y-3">
+                  <a
+                    href={`/games/${game.id}/dm`}
+                    className="block w-full rounded-xl border border-yellow-500/40 bg-yellow-500/10 px-4 py-3 text-center font-bold text-yellow-300 transition hover:bg-yellow-500/20"
+                  >
+                    Pantalla de DM
+                  </a>
+
                   <a
                     href={`/games/${game.id}/maps/new`}
                     className="block w-full rounded-xl border border-zinc-700 px-4 py-3 text-center font-semibold text-zinc-200 transition hover:bg-zinc-800"

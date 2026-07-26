@@ -30,6 +30,7 @@ model User {
   memberships  GameMember[]
   createdGames Game[]          @relation("GameDM")
   selections   GameCharacter[]
+  diceRolls    DiceRoll[]  
 }
 
 model Game {
@@ -38,6 +39,7 @@ model Game {
   description String?
   inviteCode  String   @unique
   dmUserId    String
+  dmNotes     String   @default("")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -46,6 +48,9 @@ model Game {
   selections      GameCharacter[]
   battleMaps      BattleMap[]
   combatEncounter CombatEncounter?
+  diceRolls       DiceRoll[]
+  npcs            NpcPreset[]
+  monsters        MonsterPreset[]
 
   @@index([dmUserId])
 }
@@ -96,6 +101,7 @@ model GameCharacter {
   characterId String
   isActive    Boolean  @default(true)
   selectedAt  DateTime @default(now())
+  journal String @default("")
 
   game      Game      @relation(fields: [gameId], references: [id], onDelete: Cascade)
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -104,6 +110,7 @@ model GameCharacter {
   @@unique([gameId, userId, characterId])
   @@index([userId])
   @@index([characterId])
+  
 }
 
 model BattleMap {
@@ -280,13 +287,16 @@ model RacePreset {
   source         String   @default("SRD")
   speed          Int      @default(30)
   size           String   @default("Medium")
-  abilityBonuses Json     @default("{}") // { "strength": 1, "dexterity": 2, ... }
+  abilityBonuses Json     @default("{}")
   traits         String[]
   languages      String[]
+  appearance     String   @default("")   // ← NUEVO: descripción breve de apariencia física
+  commonClasses  String[] @default([])   // ← NUEVO: clases más comunes/recomendadas para esta raza
   isSrd          Boolean  @default(true)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }
+
 
 model BackgroundPreset {
   id                  String   @id
@@ -301,4 +311,117 @@ model BackgroundPreset {
   isSrd               Boolean  @default(true)
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
+}
+
+model WeaponPreset {
+  id               String   @id
+  name             String
+  category         String   // "simple" | "martial"
+  attackType       String   // "melee" | "ranged"
+  damageDice       String   // "1d8"
+  versatileDice    String?  // "1d10" — si tiene la propiedad Versátil
+  damageType       String   // "cortante" | "perforante" | "contundente"
+  properties       String[] // ["Ligera", "Finesse", "Arrojadiza"]
+  rangeNormal      Int?     // pies, para armas a distancia o arrojadizas
+  rangeLong        Int?     // pies, alcance largo
+  isFinesse        Boolean  @default(false)
+  isTwoHanded      Boolean  @default(false)
+  isLight          Boolean  @default(false)
+  isHeavy          Boolean  @default(false)
+  isReach          Boolean  @default(false)
+  isThrown         Boolean  @default(false)
+  requiresAmmo     Boolean  @default(false)
+  requiresLoading  Boolean  @default(false)
+  isSpecial        Boolean  @default(false)
+  source           String   @default("SRD 2014")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model SpellPreset {
+  id            String   @id
+  name          String
+  level         Int      // 0 = truco (cantrip)
+  school        String
+  castingTime   String
+  range         String   // texto para mostrar, ej. "60 pies (18 m)"
+  rangeFeet     Int?
+  components    String[] // ["V", "S", "M"]
+  duration      String
+  concentration Boolean  @default(false)
+  ritual        Boolean  @default(false)
+  classes       String[] // ["Mago", "Hechicero"]
+  description   String
+
+  attackType    String?  // "melee_spell" | "ranged_spell" | null
+  savingThrow   String?  // "strength" | "dexterity" | ... | null
+  damageDice    String?  // "1d6"
+  damageType    String?  // "ácido", "fuego", etc.
+  healingDice   String?  // "1d8"
+
+  areaShape     String?  // "cone" | "cube" | "sphere" | "line" | null
+  areaSizeFeet  Int?
+
+  higherLevels  String?  // texto libre de escalado con espacios de nivel superior
+  notes         String?
+  source        String   @default("Personalizado")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model DiceRoll {
+  id            String   @id @default(cuid())
+  gameId        String
+  userId        String
+  characterName String
+  expression    String   // ej. "1d20+5"
+  rolls         Json     @default("[]") // ej. [14]
+  modifier      Int      @default(0)
+  total         Int
+  createdAt     DateTime @default(now())
+
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([gameId])
+}
+
+model NpcPreset {
+  id          String   @id @default(cuid())
+  gameId      String
+  name        String
+  description String   @default("")
+  notes       String   @default("")
+  hp          Int?
+  maxHp       Int?
+  ac          Int?
+  imagePath   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@index([gameId])
+}
+
+model MonsterPreset {
+  id          String   @id @default(cuid())
+  gameId      String
+  name        String
+  description String   @default("")
+  notes       String   @default("")
+  hp          Int?
+  maxHp       Int?
+  ac          Int?
+  speed       Int?
+  damageDice  String?
+  damageType  String?
+  source      String   @default("Personalizado")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@index([gameId])
 }

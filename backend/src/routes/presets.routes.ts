@@ -15,7 +15,12 @@ presetsRouter.get("/presets/classes", async (req, res) => {
       orderBy: { name: "asc" },
       include: {
         features: { orderBy: [{ level: "asc" }, { name: "asc" }] },
-        subclasses: { orderBy: { name: "asc" } },
+        subclasses: {
+          orderBy: { name: "asc" },
+          include: {
+            features: { orderBy: [{ level: "asc" }, { name: "asc" }] },
+          },
+        },
       },
     });
 
@@ -130,5 +135,83 @@ presetsRouter.get("/presets/backgrounds/:backgroundId", async (req, res) => {
   } catch (error) {
     console.error("Error en GET /presets/backgrounds/:backgroundId:", error);
     return res.status(500).json({ message: "Error interno al cargar trasfondo." });
+  }
+});
+
+// ─── GET /presets/weapons ─────────────────────────────────────────────────────
+// Lee de la tabla WeaponPreset en la base de datos.
+
+presetsRouter.get("/presets/weapons", async (req, res) => {
+  try {
+    const user = getAuthUser(req);
+    if (!user) return res.status(401).json({ message: "Debes iniciar sesión." });
+
+    const weapons = await prisma.weaponPreset.findMany({
+      orderBy: [{ category: "asc" }, { name: "asc" }],
+    });
+
+    return res.json({ weapons });
+  } catch (error) {
+    console.error("Error en GET /presets/weapons:", error);
+    return res.status(500).json({ message: "Error interno al cargar armas." });
+  }
+});
+
+// ─── GET /presets/weapons/:weaponId ──────────────────────────────────────────
+
+presetsRouter.get("/presets/weapons/:weaponId", async (req, res) => {
+  try {
+    const user = getAuthUser(req);
+    if (!user) return res.status(401).json({ message: "Debes iniciar sesión." });
+
+    const weapon = await prisma.weaponPreset.findUnique({
+      where: { id: String(req.params.weaponId) },
+    });
+
+    if (!weapon) return res.status(404).json({ message: "Arma no encontrada." });
+
+    return res.json({ weapon });
+  } catch (error) {
+    console.error("Error en GET /presets/weapons/:weaponId:", error);
+    return res.status(500).json({ message: "Error interno al cargar arma." });
+  }
+});
+
+// ─── GET /presets/spells ──────────────────────────────────────────────────────
+// Lee de la tabla SpellPreset en la base de datos.
+
+presetsRouter.get("/presets/spells", async (req, res) => {
+  try {
+    const user = getAuthUser(req);
+    if (!user) return res.status(401).json({ message: "Debes iniciar sesión." });
+
+    const spells = await prisma.spellPreset.findMany({
+      orderBy: [{ level: "asc" }, { name: "asc" }],
+    });
+
+    return res.json({ spells });
+  } catch (error) {
+    console.error("Error en GET /presets/spells:", error);
+    return res.status(500).json({ message: "Error interno al cargar hechizos." });
+  }
+});
+
+// ─── GET /presets/spells/:spellId ────────────────────────────────────────────
+
+presetsRouter.get("/presets/spells/:spellId", async (req, res) => {
+  try {
+    const user = getAuthUser(req);
+    if (!user) return res.status(401).json({ message: "Debes iniciar sesión." });
+
+    const spell = await prisma.spellPreset.findUnique({
+      where: { id: String(req.params.spellId) },
+    });
+
+    if (!spell) return res.status(404).json({ message: "Hechizo no encontrado." });
+
+    return res.json({ spell });
+  } catch (error) {
+    console.error("Error en GET /presets/spells/:spellId:", error);
+    return res.status(500).json({ message: "Error interno al cargar hechizo." });
   }
 });

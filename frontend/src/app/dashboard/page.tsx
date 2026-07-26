@@ -235,6 +235,48 @@ export default function DashboardPage() {
               </p>
             </a>
           ) : null}
+
+          {user.isAdmin ? (
+            <a
+              href="/admin/weapons"
+              className="rounded-3xl border border-yellow-500/40 bg-yellow-500/10 p-6 transition hover:border-yellow-400 hover:bg-yellow-500/20"
+            >
+              <h2 className="text-xl font-black text-white">
+                Administrar armas
+              </h2>
+              <p className="mt-2 text-zinc-300">
+                Agregar, editar o eliminar armas del catálogo.
+              </p>
+            </a>
+          ) : null}
+
+          {user.isAdmin ? (
+            <a
+              href="/admin/spells"
+              className="rounded-3xl border border-yellow-500/40 bg-yellow-500/10 p-6 transition hover:border-yellow-400 hover:bg-yellow-500/20"
+            >
+              <h2 className="text-xl font-black text-white">
+                Administrar hechizos
+              </h2>
+              <p className="mt-2 text-zinc-300">
+                Agregar, editar o eliminar hechizos del catálogo.
+              </p>
+            </a>
+          ) : null}
+
+          {user.isAdmin ? (
+            <a
+              href="/admin/races"
+              className="rounded-3xl border border-yellow-500/40 bg-yellow-500/10 p-6 transition hover:border-yellow-400 hover:bg-yellow-500/20"
+            >
+              <h2 className="text-xl font-black text-white">
+                Administrar razas
+              </h2>
+              <p className="mt-2 text-zinc-300">
+                Agregar, editar o eliminar razas del catálogo.
+              </p>
+            </a>
+          ) : null}
         </section>
       </div>
     </main>

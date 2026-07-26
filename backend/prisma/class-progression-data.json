@@ -1,0 +1,1638 @@
+{
+  "fighter": {
+    "name_en": "FIGHTER",
+    "name_es": "GUERRERO",
+    "levels": [
+      {
+        "level": 1,
+        "name": "Fighting Style (Estilo de Combate)",
+        "summary": "Fighting Style (Estilo de Combate)\n\nTipo:\nPasiva\n\nFuncionamiento:\nEspecializas tu entrenamiento en una forma concreta de combatir. El beneficio es permanente mientras cumplas sus requisitos.\n\nOpciones del SRD\n\n• Archery\nObtienes +2 a las tiradas de ataque con armas a distancia.\n\nIdeal para:\nArqueros.\n\n• Defense\n\nMientras lleves armadura obtienes +1 a la Clase de Armadura.\n\nIdeal para:\nTanques.\n\n• Dueling\n\nCuando empuñas una única arma cuerpo a cuerpo y ninguna otra arma, haces +2 al daño.\n\nIdeal para:\nEspada y escudo.\n\n• Great Weapon Fighting\n\nCuando utilizas armas a dos manos puedes repetir resultados bajos en los dados de daño.\n\nIdeal para:\nEspadones y hachas grandes.\n\n• Protection\n\nSi llevas escudo puedes usar tu reacción para dificultar un ataque contra un aliado cercano.\n\nIdeal para:\nDefensor.\n\n• Two-Weapon Fighting\n\nAñades tu modificador al daño del ataque realizado con la segunda arma.\n\nIdeal para:\nCombate con dos espadas.\n\nSecond Wind\n\nTipo\nAcción adicional\n\nUsos\n1\n\nRecuperación\nDescanso corto o largo\n\nFuncionamiento\n\nRecuperas:\n\n1d10 + nivel de Guerrero\n\npuntos de golpe.\n\nIdeal para mantenerse con vida durante los primeros niveles."
+      },
+      {
+        "level": 2,
+        "name": "Action Surge",
+        "summary": "Action Surge\n\nTipo\n\nAcción gratuita especial\n\nUsos\n\n1\n\nRecuperación\n\nDescanso corto.\n\nFuncionamiento\n\nObtienes una acción adicional durante tu turno.\n\nPuedes:\n\n• Atacar nuevamente.\n• Lanzar otra acción.\n• Esprintar.\n• Destrabarte.\n• Usar un objeto.\n\nUna de las habilidades más poderosas del Guerrero.\n\nA partir del nivel 17 obtienes dos usos."
+      },
+      {
+        "level": 3,
+        "name": "Martial Archetype",
+        "summary": "Martial Archetype\n\nEliges una subclase."
+      },
+      {
+        "level": 4,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement\n\nPuedes\n\n• aumentar características\n\no\n\n• escoger una dote."
+      },
+      {
+        "level": 5,
+        "name": "Extra Attack",
+        "summary": "Extra Attack\n\nCuando realizas la acción Atacar puedes efectuar dos ataques."
+      },
+      {
+        "level": 6,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement\n\nNueva mejora de característica o dote."
+      },
+      {
+        "level": 7,
+        "name": "Obtienes una mejora propia de tu subclase.",
+        "summary": "Obtienes una mejora propia de tu subclase."
+      },
+      {
+        "level": 8,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement"
+      },
+      {
+        "level": 9,
+        "name": "Indomitable",
+        "summary": "Indomitable\n\nUsos\n\n1\n\nRecuperación\n\nDescanso largo.\n\nFuncionamiento\n\nPuedes repetir una tirada de salvación fallida.\n\nPosteriormente obtienes más usos."
+      },
+      {
+        "level": 10,
+        "name": "Nueva habilidad de subclase.",
+        "summary": "Nueva habilidad de subclase."
+      },
+      {
+        "level": 11,
+        "name": "Extra Attack (2)",
+        "summary": "Extra Attack (2)\n\nAhora realizas\n\n3 ataques\n\ncada vez que utilizas la acción Atacar."
+      },
+      {
+        "level": 12,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement"
+      },
+      {
+        "level": 13,
+        "name": "Indomitable",
+        "summary": "Indomitable\n\n2 usos."
+      },
+      {
+        "level": 14,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement"
+      },
+      {
+        "level": 15,
+        "name": "Nueva habilidad de subclase.",
+        "summary": "Nueva habilidad de subclase."
+      },
+      {
+        "level": 16,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement"
+      },
+      {
+        "level": 17,
+        "name": "Action Surge",
+        "summary": "Action Surge\n\nAhora dispones de\n\n2 usos\n\npor descanso corto.\n\nIndomitable\n\n3 usos."
+      },
+      {
+        "level": 18,
+        "name": "Nueva habilidad de subclase.",
+        "summary": "Nueva habilidad de subclase."
+      },
+      {
+        "level": 19,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement"
+      },
+      {
+        "level": 20,
+        "name": "Extra Attack (3)",
+        "summary": "Extra Attack (3)\n\nRealizas\n\n4 ataques\n\ncon una única acción de Atacar.\n\nEs la mayor cantidad de ataques base de cualquier clase."
+      }
+    ],
+    "subclasses": [
+      {
+        "name": "Champion",
+        "summary": "Improved Critical\n\nTus golpes críticos ocurren con una tirada de 19 o 20.\n\nPosteriormente mejora a 18-20.\n\nIdeal para causar mucho daño constante.",
+        "level": 3
+      },
+      {
+        "name": "Battle Master",
+        "summary": "Obtienes:\n\n• Dados de Superioridad\n\n(d8 inicialmente)\n\nSirven para ejecutar maniobras especiales.\n\nRecuperación\n\nDescanso corto.\n\nManiobras SRD\n\n• Precision Attack\nAñades el dado a una tirada de ataque.\n\n• Trip Attack\nDañas y puedes derribar al enemigo.\n\n• Riposte\nContraatacas tras un fallo enemigo.\n\n• Disarming Attack\nIntentas desarmar.\n\n• Menacing Attack\nAsustas al objetivo.\n\n• Pushing Attack\nEmpujas varios metros.\n\n• Rally\nConcedes puntos temporales a un aliado.\n\n• Commander’s Strike\nPermites atacar a un compañero.",
+        "level": 3
+      },
+      {
+        "name": "Eldritch Knight",
+        "summary": "Obtienes magia.\n\nUtilizas Inteligencia.\n\nAcceso principalmente a:\n\n• Abjuración\n\n• Evocación\n\nPuedes vincular armas para invocarlas posteriormente.\n\nExcelente mezcla entre guerrero y mago.",
+        "level": 3
+      }
+    ],
+    "subclass_choice_level": 3
+  },
+  "barbarian": {
+    "name_en": "BARBARIAN",
+    "name_es": "BÁRBARO",
+    "levels": [
+      {
+        "level": 1,
+        "name": "Rage (Furia)",
+        "summary": "Rage (Furia)\n\nTipo:\nAcción adicional\n\nUsos Iniciales:\n2 por descanso largo\n\nFuncionamiento:\nEntras en un estado de furia que potencia enormemente tus capacidades físicas.\n\nMientras estás en Furia:\n\n• Obtienes ventaja en pruebas y salvaciones de Fuerza.\n• Añades daño extra a los ataques cuerpo a cuerpo basados en Fuerza.\n• Obtienes resistencia al daño contundente, perforante y cortante.\n\nLa Furia termina si:\n\n• No atacas ni recibes daño durante un turno.\n• Quedas inconsciente.\n• Decides terminarla.\n\nDuración:\n1 minuto.\n\nDaño Extra\n\nNivel 1-8\n+2\n\nNivel 9-15\n+3\n\nNivel 16-20\n+4\n\nNotas\n\nEs la habilidad principal del Bárbaro.\n\nUnarmored Defense (Defensa sin Armadura)\n\nTipo:\nPasiva\n\nFuncionamiento:\n\nCuando no llevas armadura tu Clase de Armadura es:\n\n10 + Destreza + Constitución\n\nPuedes seguir usando escudo."
+      },
+      {
+        "level": 2,
+        "name": "Reckless Attack (Ataque Temerario)",
+        "summary": "Reckless Attack (Ataque Temerario)\n\nTipo\n\nPasiva (se activa al atacar)\n\nFuncionamiento\n\nPuedes decidir atacar de forma totalmente agresiva.\n\nObtienes:\n\nVentaja en todos los ataques cuerpo a cuerpo con Fuerza ese turno.\n\nDesventaja\n\nHasta tu siguiente turno todos los enemigos tienen ventaja para golpearte.\n\nIdeal para:\n\n• Armas pesadas\n• Buscar golpes críticos\n\nDanger Sense\n\nTipo\nPasiva\n\nFuncionamiento\n\nObtienes ventaja en salvaciones de Destreza contra efectos visibles como:\n\n• Trampas\n• Explosiones\n• Hechizos\n\nNo funciona si estás cegado, incapacitado o sorprendido."
+      },
+      {
+        "level": 3,
+        "name": "Primal Path (Senda Primigenia)",
+        "summary": "Primal Path (Senda Primigenia)\n\nEliges una subclase."
+      },
+      {
+        "level": 4,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement\n\nAumentas características o eliges una dote."
+      },
+      {
+        "level": 5,
+        "name": "Extra Attack",
+        "summary": "Extra Attack\n\nRealizas dos ataques al usar la acción Atacar.\n\nFast Movement\n\nMientras no uses armadura pesada tu velocidad aumenta 10 pies (3 metros)."
+      },
+      {
+        "level": 6,
+        "name": "Nueva habilidad de la subclase.",
+        "summary": "Nueva habilidad de la subclase."
+      },
+      {
+        "level": 7,
+        "name": "Feral Instinct",
+        "summary": "Feral Instinct\n\nObtienes ventaja en las tiradas de iniciativa.\n\nSi eres sorprendido puedes entrar en Furia antes de actuar."
+      },
+      {
+        "level": 8,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement"
+      },
+      {
+        "level": 9,
+        "name": "Brutal Critical",
+        "summary": "Brutal Critical\n\nCuando realizas un golpe crítico tiras un dado adicional de daño del arma.\n\nEscalado\n\nNivel 9\n+1 dado\n\nNivel 13\n+2 dados\n\nNivel 17\n+3 dados"
+      },
+      {
+        "level": 10,
+        "name": "Nueva habilidad de la subclase.",
+        "summary": "Nueva habilidad de la subclase."
+      },
+      {
+        "level": 11,
+        "name": "Relentless Rage",
+        "summary": "Relentless Rage\n\nSi llegas a 0 puntos de golpe puedes intentar permanecer con 1 punto de vida mediante una salvación de Constitución.\n\nLa dificultad aumenta cada vez que funciona."
+      },
+      {
+        "level": 12,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement"
+      },
+      {
+        "level": 13,
+        "name": "Brutal Critical mejora.",
+        "summary": "Brutal Critical mejora."
+      },
+      {
+        "level": 14,
+        "name": "Nueva habilidad de la subclase.",
+        "summary": "Nueva habilidad de la subclase."
+      },
+      {
+        "level": 15,
+        "name": "Persistent Rage",
+        "summary": "Persistent Rage\n\nTu Furia ya no termina por no atacar o no recibir daño.\n\nSolo finaliza si tú lo decides o quedas inconsciente."
+      },
+      {
+        "level": 16,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement"
+      },
+      {
+        "level": 17,
+        "name": "Brutal Critical mejora nuevamente.",
+        "summary": "Brutal Critical mejora nuevamente.\n\nDaño de Furia\n\n+4"
+      },
+      {
+        "level": 18,
+        "name": "Indomitable Might",
+        "summary": "Indomitable Might\n\nSi una prueba de Fuerza obtiene un resultado inferior a tu puntuación de Fuerza, puedes usar directamente tu puntuación de Fuerza como resultado.\n\nTe convierte prácticamente en una fuerza imparable."
+      },
+      {
+        "level": 19,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement"
+      },
+      {
+        "level": 20,
+        "name": "Primal Champion",
+        "summary": "Primal Champion\n\nTus puntuaciones de:\n\n• Fuerza\n• Constitución\n\naumentan en 4 cada una.\n\nEl máximo para ambas características aumenta a 24.\n\nEs una de las mejores habilidades finales del juego para combate físico."
+      }
+    ],
+    "subclasses": [
+      {
+        "name": "Path Of The Berserker",
+        "summary": "Frenzy\n\nMientras estás en Furia puedes realizar un ataque cuerpo a cuerpo adicional como acción adicional cada turno.\n\nAl terminar la Furia sufres un nivel de agotamiento.\n\nIdeal para:\n\nMáximo daño.",
+        "level": 3
+      },
+      {
+        "name": "Path Of The Totem Warrior",
+        "summary": "Spirit Seeker\n\nObtienes rituales relacionados con espíritus animales.\n\nTotem Spirit\n\nEscoges un espíritu animal.\n\nOpciones SRD\n\nOso\n\nMientras estás en Furia obtienes resistencia contra casi todos los tipos de daño.\n\nÁguila\n\nMayor movilidad y visión.\n\nLobo\n\nTus aliados obtienen ventaja al atacar enemigos cercanos a ti.",
+        "level": 3
+      }
+    ],
+    "subclass_choice_level": 3
+  },
+  "bard": {
+    "name_en": "BARD",
+    "name_es": "BARDO",
+    "levels": [
+      {
+        "level": 1,
+        "name": "Spellcasting (Lanzamiento de Conjuros)",
+        "summary": "Spellcasting (Lanzamiento de Conjuros)\n\nTipo\nPrincipal\n\nFuncionamiento\n\nObtienes acceso a la magia de los Bardos.\n\nCaracterística de lanzamiento\n\nCarisma\n\nPuedes lanzar:\n\n• Cantrips\n• Hechizos de nivel 1 a 9\n\nPreparación\n\nLos bardos conocen un número fijo de conjuros, pero pueden sustituir uno al subir de nivel.\n\nBardic Inspiration (Inspiración Bárdica)\n\nTipo\nAcción adicional\n\nAlcance\n60 pies (18 m)\n\nFuncionamiento\n\nOtorgas un dado de inspiración a un aliado.\n\nDurante los siguientes 10 minutos puede añadir ese dado a:\n\n• Tiradas de ataque\n• Pruebas de habilidad\n• Tiradas de salvación\n\nNúmero de usos\n\nIgual a tu modificador de Carisma\n(Mínimo 1)\n\nRecuperación\n\nDescanso largo\n(A partir del nivel 5 también en descanso corto.)\n\nEscalado\n\nNivel 1-4\nd6\n\nNivel 5-9\nd8\n\nNivel 10-14\nd10\n\nNivel 15-20\nd12"
+      },
+      {
+        "level": 2,
+        "name": "Jack of All Trades",
+        "summary": "Jack of All Trades\n\nTipo\nPasiva\n\nFuncionamiento\n\nAñades la mitad de tu bonificador de competencia a cualquier prueba de habilidad en la que no seas competente.\n\nHace al Bardo extremadamente versátil.\n\nSong of Rest\n\nTipo\nPasiva\n\nFuncionamiento\n\nDurante un descanso corto, los aliados recuperan vida adicional si gastan Dados de Golpe.\n\nEscalado\n\nNivel 2\n1d6\n\nNivel 9\n1d8\n\nNivel 13\n1d10\n\nNivel 17\n1d12"
+      },
+      {
+        "level": 3,
+        "name": "Bard College",
+        "summary": "Bard College\n\nEscoges una subclase."
+      },
+      {
+        "level": 4,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement\n\nAumentas características o eliges una dote."
+      },
+      {
+        "level": 5,
+        "name": "Font of Inspiration",
+        "summary": "Font of Inspiration\n\nLa Inspiración Bárdica ahora se recupera con descansos cortos además de largos.\n\nEl dado mejora a d8."
+      },
+      {
+        "level": 6,
+        "name": "Nueva habilidad de la subclase.",
+        "summary": "Nueva habilidad de la subclase.\n\nCollege of Lore\n\nAdditional Magical Secrets\n\nAprendes dos conjuros adicionales de cualquier lista de clases.\n\nEs una de las habilidades más fuertes del juego.\n\nCollege of Valor\n\nExtra Attack\n\nRealizas dos ataques con la acción Atacar."
+      },
+      {
+        "level": 7,
+        "name": "Obtienes conjuros de nivel superior.",
+        "summary": "Obtienes conjuros de nivel superior.\n\nNo hay nuevas habilidades de clase."
+      },
+      {
+        "level": 8,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement"
+      },
+      {
+        "level": 9,
+        "name": "Song of Rest mejora a 1d8.",
+        "summary": "Song of Rest mejora a 1d8."
+      },
+      {
+        "level": 10,
+        "name": "Expertise",
+        "summary": "Expertise\n\nEscoges dos habilidades adicionales para duplicar competencia.\n\nMagical Secrets\n\nAprendes dos conjuros de cualquier lista de clases.\n\nEstos cuentan como conjuros de Bardo.\n\nEs la habilidad distintiva de los bardos de alto nivel.\n\nLa Inspiración Bárdica mejora a d10."
+      },
+      {
+        "level": 11,
+        "name": "Acceso a conjuros de nivel 6.",
+        "summary": "Acceso a conjuros de nivel 6."
+      },
+      {
+        "level": 12,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement"
+      },
+      {
+        "level": 13,
+        "name": "Song of Rest mejora a 1d10.",
+        "summary": "Song of Rest mejora a 1d10."
+      },
+      {
+        "level": 14,
+        "name": "Nueva habilidad de la subclase.",
+        "summary": "Nueva habilidad de la subclase.\n\nCollege of Lore\n\nPeerless Skill\n\nPuedes gastar Inspiración Bárdica sobre ti mismo para mejorar una prueba de habilidad.\n\nCollege of Valor\n\nBattle Magic\n\nDespués de lanzar un conjuro puedes realizar un ataque con arma como acción adicional."
+      },
+      {
+        "level": 15,
+        "name": "Inspiración Bárdica mejora a d12.",
+        "summary": "Inspiración Bárdica mejora a d12."
+      },
+      {
+        "level": 16,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement"
+      },
+      {
+        "level": 17,
+        "name": "Song of Rest mejora a 1d12.",
+        "summary": "Song of Rest mejora a 1d12.\n\nAcceso a conjuros de nivel 9."
+      },
+      {
+        "level": 18,
+        "name": "Magical Secrets",
+        "summary": "Magical Secrets\n\nAprendes otros dos conjuros de cualquier lista del juego."
+      },
+      {
+        "level": 19,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement"
+      },
+      {
+        "level": 20,
+        "name": "Superior Inspiration",
+        "summary": "Superior Inspiration\n\nSi comienzas un combate sin usos de Inspiración Bárdica recuperas automáticamente un uso."
+      }
+    ],
+    "subclasses": [
+      {
+        "name": "College Of Lore",
+        "summary": "Bonus Proficiencies\n\nObtienes competencia en tres habilidades adicionales.\n\nCutting Words\n\nUsando Inspiración Bárdica puedes reducir:\n\n• Ataques enemigos\n• Tiradas de daño\n• Pruebas de habilidad\n\nRepresenta distraer o desmoralizar al enemigo.",
+        "level": 3
+      },
+      {
+        "name": "College Of Valor",
+        "summary": "Bonus Proficiencies\n\nCompetencia con:\n\n• Armaduras medias\n• Escudos\n• Armas marciales\n\nCombat Inspiration\n\nLa Inspiración Bárdica también puede emplearse para:\n\n• Aumentar daño\n• Mejorar la Clase de Armadura contra un ataque\n\nIdeal para bardos orientados al combate.",
+        "level": 3
+      }
+    ],
+    "subclass_choice_level": 3
+  },
+  "cleric": {
+    "name_en": "CLERIC",
+    "name_es": "CLÉRIGO",
+    "levels": [
+      {
+        "level": 1,
+        "name": "Spellcasting (Lanzamiento de Conjuros)",
+        "summary": "Spellcasting (Lanzamiento de Conjuros)\n\nTipo:\nPrincipal\n\nFuncionamiento:\nEl Clérigo obtiene magia divina basada en la Sabiduría.\n\nCaracterística de lanzamiento:\nSabiduría\n\nPreparación de Conjuros:\nCada día puedes preparar una cantidad de conjuros igual a:\n\nModificador de Sabiduría + Nivel de Clérigo\n(Mínimo 1)\n\nPuedes cambiar los conjuros preparados tras un descanso largo.\n\nDivine Domain (Dominio Divino)\n\nEscoges un dominio que representa el poder otorgado por tu deidad.\n\nDominios del SRD:\n\n• Life Domain (Vida)\n• Light Domain (Luz)\n\nCada dominio concede:\n\n• Conjuros adicionales siempre preparados.\n• Competencias o beneficios únicos.\n• Nuevas habilidades a niveles superiores."
+      },
+      {
+        "level": 2,
+        "name": "Channel Divinity (Canalizar Divinidad)",
+        "summary": "Channel Divinity (Canalizar Divinidad)\n\nTipo:\nAcción\n\nUsos Iniciales:\n1 por descanso corto o largo.\n\nFuncionamiento:\nCanalizas el poder de tu deidad para producir efectos especiales.\n\nTodos los Clérigos obtienen:\n\nTurn Undead (Ahuyentar No Muertos)\n\nLas criaturas no muertas cercanas deben realizar una salvación de Sabiduría.\n\nSi fallan:\n\n• Huyen del Clérigo.\n• No pueden acercarse.\n• Solo intentan escapar.\n\nA niveles altos algunos no muertos son destruidos automáticamente.\n\nChannel Divinity del Dominio\n\nLife Domain\n\nPreserve Life\n\nDistribuyes una cantidad de curación entre criaturas cercanas.\n\nIdeal para recuperar a varios aliados al mismo tiempo.\n\nLight Domain\n\nRadiance of the Dawn\n\nUna explosión de luz elimina oscuridad mágica y daña criaturas hostiles cercanas.\n\nMuy eficaz contra enemigos numerosos."
+      },
+      {
+        "level": 3,
+        "name": "Acceso a conjuros de nivel 2.",
+        "summary": "Acceso a conjuros de nivel 2.\n\nNo obtienes habilidades nuevas."
+      },
+      {
+        "level": 4,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement\n\nAumentas características o eliges una dote."
+      },
+      {
+        "level": 5,
+        "name": "Destroy Undead",
+        "summary": "Destroy Undead\n\nCuando utilizas Turn Undead, los no muertos débiles son destruidos automáticamente si fallan la salvación.\n\nEl CR máximo aumenta con el nivel.\n\nAcceso a conjuros de nivel 3."
+      },
+      {
+        "level": 6,
+        "name": "Nueva habilidad del Dominio.",
+        "summary": "Nueva habilidad del Dominio.\n\nLife Domain\n\nBlessed Healer\n\nCada vez que curas a otra criatura mediante un conjuro también recuperas algunos puntos de golpe.\n\nLight Domain\n\nImproved Warding Flare\n\nAhora puedes proteger también a aliados cercanos con Warding Flare."
+      },
+      {
+        "level": 7,
+        "name": "Acceso a conjuros de nivel 4.",
+        "summary": "Acceso a conjuros de nivel 4."
+      },
+      {
+        "level": 8,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement\n\nPotent Spellcasting\no\nDivine Strike\n\nSegún el dominio elegido.\n\nLife Domain\n\nDivine Strike\n\nUna vez por turno un ataque con arma inflige daño radiante adicional.\n\nLight Domain\n\nPotent Spellcasting\n\nAñades tu modificador de Sabiduría al daño de algunos cantrips."
+      },
+      {
+        "level": 9,
+        "name": "Acceso a conjuros de nivel 5.",
+        "summary": "Acceso a conjuros de nivel 5."
+      },
+      {
+        "level": 10,
+        "name": "Divine Intervention",
+        "summary": "Divine Intervention\n\nTipo:\nAcción\n\nFuncionamiento:\n\nSolicitas ayuda directamente a tu deidad.\n\nSe realiza una tirada porcentual.\n\nSi el resultado es igual o inferior a tu nivel de Clérigo, la intervención tiene éxito.\n\nEl efecto exacto queda a criterio del Director de Juego.\n\nTras un éxito:\n\nNo puedes volver a utilizar esta habilidad durante 7 días."
+      },
+      {
+        "level": 11,
+        "name": "Acceso a conjuros de nivel 6.",
+        "summary": "Acceso a conjuros de nivel 6."
+      },
+      {
+        "level": 12,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement"
+      },
+      {
+        "level": 13,
+        "name": "Acceso a conjuros de nivel 7.",
+        "summary": "Acceso a conjuros de nivel 7."
+      },
+      {
+        "level": 14,
+        "name": "Destroy Undead mejora.",
+        "summary": "Destroy Undead mejora.\n\nPuede destruir no muertos de mayor poder."
+      },
+      {
+        "level": 15,
+        "name": "Acceso a conjuros de nivel 8.",
+        "summary": "Acceso a conjuros de nivel 8."
+      },
+      {
+        "level": 16,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement"
+      },
+      {
+        "level": 17,
+        "name": "Acceso a conjuros de nivel 9.",
+        "summary": "Acceso a conjuros de nivel 9.\n\nNueva habilidad del Dominio.\n\nLife Domain\n\nSupreme Healing\n\nCuando lanzas un conjuro de curación, todos los dados restauran la cantidad máxima posible.\n\nEjemplo:\n\nEn lugar de 3d8, recuperas directamente 24 puntos de vida.\n\nLight Domain\n\nCorona of Light\n\nIrradias una intensa luz divina.\n\nLos enemigos tienen mayor dificultad para resistir varios de tus conjuros luminosos."
+      },
+      {
+        "level": 18,
+        "name": "Channel Divinity mejora.",
+        "summary": "Channel Divinity mejora.\n\nObtienes 3 usos antes de descansar."
+      },
+      {
+        "level": 19,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement"
+      },
+      {
+        "level": 20,
+        "name": "Improved Divine Intervention",
+        "summary": "Improved Divine Intervention\n\nLa intervención divina funciona automáticamente.\n\nNo requiere tirada.\n\nUna vez utilizada, debe pasar 7 días antes de volver a emplearla.\n\nEs una de las habilidades finales más poderosas del juego."
+      }
+    ],
+    "subclasses": [
+      {
+        "name": "Life Domain",
+        "summary": "Bonus Proficiency\n\nCompetencia con armaduras pesadas.\n\nDisciple of Life\n\nSiempre que un conjuro restaure puntos de golpe, el objetivo recupera vida adicional.\n\nIdeal para sanadores.",
+        "level": 1
+      },
+      {
+        "name": "Light Domain",
+        "summary": "Bonus Cantrip\n\nObtienes un cantrip adicional relacionado con la luz.\n\nWarding Flare\n\nTipo:\nReacción\n\nFuncionamiento:\nPuedes crear un destello intenso que dificulta el ataque de un enemigo cercano, imponiéndole desventaja.\n\nUsos:\nIguales a tu modificador de Sabiduría por descanso largo.",
+        "level": 1
+      }
+    ],
+    "subclass_choice_level": 1
+  },
+  "druid": {
+    "name_en": "DRUID",
+    "name_es": "DRUIDA",
+    "levels": [
+      {
+        "level": 1,
+        "name": "Spellcasting (Lanzamiento de Conjuros)",
+        "summary": "Spellcasting (Lanzamiento de Conjuros)\n\nTipo:\nPrincipal\n\nCaracterística de lanzamiento:\nSabiduría\n\nFuncionamiento:\n\nPreparas conjuros diariamente.\n\nCantidad preparada:\n\nModificador de Sabiduría\n+\nNivel de Druida\n\nPuedes cambiar la lista tras cada descanso largo.\n\nEl Druida posee una de las listas de conjuros más versátiles del juego, enfocada en:\n\n• Curación\n• Invocaciones\n• Control del terreno\n• Transformaciones\n• Daño elemental"
+      },
+      {
+        "level": 2,
+        "name": "Wild Shape (Forma Salvaje)",
+        "summary": "Wild Shape (Forma Salvaje)\n\nTipo:\nAcción\n\nUsos:\n2\n\nRecuperación:\nDescanso corto o largo\n\nFuncionamiento:\n\nTe transformas en una bestia que hayas visto anteriormente.\n\nMientras estás transformado:\n\n• Adoptas los puntos de golpe de la bestia.\n• Usas sus sentidos y movimiento.\n• Conservas tu Inteligencia, Sabiduría y Carisma.\n• Mantienes tu personalidad y recuerdos.\n\nAl llegar a 0 puntos de golpe en forma animal, vuelves a tu forma normal con los puntos de golpe que tenías antes de transformarte (menos el daño sobrante, si lo hay).\n\nLimitaciones iniciales\n\nCR máximo:\n1/4\n\nSin velocidad de vuelo.\n\nSin velocidad de nado.\n\nDuración máxima:\n\nHoras iguales a la mitad del nivel de Druida."
+      },
+      {
+        "level": 3,
+        "name": "Acceso a conjuros de nivel 2.",
+        "summary": "Acceso a conjuros de nivel 2."
+      },
+      {
+        "level": 4,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement\n\nWild Shape mejora\n\nAhora puedes transformarte en criaturas con velocidad de nado.\n\nCR máximo:\n\n1/2"
+      },
+      {
+        "level": 5,
+        "name": "Acceso a conjuros de nivel 3.",
+        "summary": "Acceso a conjuros de nivel 3."
+      },
+      {
+        "level": 6,
+        "name": "Nueva habilidad de subclase.",
+        "summary": "Nueva habilidad de subclase.\n\nCircle of the Land\n\nLand's Stride\n\nIgnoras gran parte del terreno difícil no mágico.\n\nTambién tienes ventaja contra ciertas plantas mágicas que dificultan el movimiento.\n\nCircle of the Moon\n\nPrimal Strike\n\nTus ataques naturales cuentan como mágicos para superar resistencias e inmunidades."
+      },
+      {
+        "level": 7,
+        "name": "Acceso a conjuros de nivel 4.",
+        "summary": "Acceso a conjuros de nivel 4."
+      },
+      {
+        "level": 8,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement\n\nWild Shape mejora\n\nPuedes transformarte en criaturas con velocidad de vuelo.\n\nCR máximo:\n\n1"
+      },
+      {
+        "level": 9,
+        "name": "Acceso a conjuros de nivel 5.",
+        "summary": "Acceso a conjuros de nivel 5."
+      },
+      {
+        "level": 10,
+        "name": "Nueva habilidad de subclase.",
+        "summary": "Nueva habilidad de subclase.\n\nCircle of the Land\n\nNature's Ward\n\nNo puedes ser encantado o asustado por elementales o feéricos y eres inmune a ciertos efectos de veneno y enfermedad.\n\nCircle of the Moon\n\nElemental Wild Shape\n\nPuedes gastar dos usos de Wild Shape para convertirte en:\n\n• Elemental de Aire\n• Elemental de Tierra\n• Elemental de Fuego\n• Elemental de Agua\n\nUna de las habilidades más emblemáticas del Druida."
+      },
+      {
+        "level": 11,
+        "name": "Acceso a conjuros de nivel 6.",
+        "summary": "Acceso a conjuros de nivel 6."
+      },
+      {
+        "level": 12,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement"
+      },
+      {
+        "level": 13,
+        "name": "Acceso a conjuros de nivel 7.",
+        "summary": "Acceso a conjuros de nivel 7."
+      },
+      {
+        "level": 14,
+        "name": "Nueva habilidad de subclase.",
+        "summary": "Nueva habilidad de subclase.\n\nCircle of the Land\n\nNature's Sanctuary\n\nLas bestias y plantas tienen dificultad para atacarte y suelen evitar enfrentarte.\n\nCircle of the Moon\n\nThousand Forms\n\nPuedes lanzar Alter Self sobre ti mismo sin gastar espacios de conjuro."
+      },
+      {
+        "level": 15,
+        "name": "Acceso a conjuros de nivel 8.",
+        "summary": "Acceso a conjuros de nivel 8."
+      },
+      {
+        "level": 16,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement"
+      },
+      {
+        "level": 17,
+        "name": "Acceso a conjuros de nivel 9.",
+        "summary": "Acceso a conjuros de nivel 9."
+      },
+      {
+        "level": 18,
+        "name": "Timeless Body",
+        "summary": "Timeless Body\n\nEnvejeces mucho más lentamente.\n\nSolo envejeces una fracción del tiempo normal.\n\nBeast Spells\n\nPuedes lanzar la mayoría de tus conjuros mientras permaneces transformado mediante Wild Shape.\n\nEsta habilidad convierte al Druida en uno de los lanzadores más versátiles del juego."
+      },
+      {
+        "level": 19,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement"
+      },
+      {
+        "level": 20,
+        "name": "Archdruid",
+        "summary": "Archdruid\n\nPuedes utilizar Wild Shape un número ilimitado de veces.\n\nAdemás puedes ignorar la mayoría de los componentes verbales y somáticos de tus conjuros.\n\nEs considerada una de las mejores habilidades finales del juego."
+      }
+    ],
+    "subclasses": [
+      {
+        "name": "Druid Circle",
+        "summary": "Escoges una subclase.",
+        "level": 2
+      },
+      {
+        "name": "Circle Of The Land",
+        "summary": "Bonus Cantrip\n\nAprendes un cantrip adicional de Druida.\n\nNatural Recovery\n\nUna vez por descanso corto recuperas espacios de conjuro gastados.\n\nNo recupera espacios de nivel 6 o superior.\n\nIdeal para campañas largas.",
+        "level": 2
+      },
+      {
+        "name": "Circle Of The Moon",
+        "summary": "Combat Wild Shape\n\nPuedes transformarte usando una Acción Adicional.\n\nAdemás puedes gastar espacios de conjuro para recuperar puntos de golpe mientras estás transformado.\n\nMejora de Wild Shape\n\nPuedes adoptar bestias de CR 1 desde nivel 2.\n\nEs la subclase más poderosa para combatir transformado.",
+        "level": 2
+      }
+    ],
+    "subclass_choice_level": 2
+  },
+  "monk": {
+    "name_en": "MONK",
+    "name_es": "MONJE",
+    "levels": [
+      {
+        "level": 1,
+        "name": "Martial Arts (Artes Marciales)",
+        "summary": "Martial Arts (Artes Marciales)\n\nTipo\n\nPasiva\n\nFuncionamiento\n\nMientras no uses armadura ni escudo:\n\n• Puedes utilizar Destreza en lugar de Fuerza para atacar con armas de monje y ataques desarmados.\n• Tus ataques desarmados utilizan un dado de daño especial.\n• Después de atacar puedes realizar un ataque desarmado como Acción Adicional.\n\nDaño de Artes Marciales\n\nNivel 1-4\n1d4\n\nNivel 5-10\n1d6\n\nNivel 11-16\n1d8\n\nNivel 17-20\n1d10"
+      },
+      {
+        "level": 2,
+        "name": "Ki",
+        "summary": "Ki\n\nObtienes puntos de Ki.\n\nFlurry of Blows (Ráfaga de Golpes)\n\nCosto\n\n1 Punto de Ki\n\nAcción\n\nAcción adicional.\n\nFuncionamiento\n\nDespués de utilizar la acción Atacar realizas dos ataques desarmados adicionales.\n\nIdeal para aumentar el daño por turno.\n\nPatient Defense\n\nCosto\n\n1 Punto de Ki\n\nFuncionamiento\n\nRealizas la acción Esquivar como Acción Adicional.\n\nIdeal para sobrevivir.\n\nStep of the Wind\n\nCosto\n\n1 Punto de Ki\n\nFuncionamiento\n\nPuedes utilizar Retirada o Carrera como Acción Adicional.\n\nAdemás duplicas la distancia de salto durante ese turno.\n\nUnarmored Movement\n\nMientras no lleves armadura tu velocidad aumenta.\n\nEscalado\n\nNivel 2\n+10 pies (3 m)\n\nNivel 6\n+15 pies\n\nNivel 10\n+20 pies\n\nNivel 14\n+25 pies\n\nNivel 18\n+30 pies"
+      },
+      {
+        "level": 3,
+        "name": "Monastic Tradition",
+        "summary": "Monastic Tradition\n\nEscoges una subclase."
+      },
+      {
+        "level": 4,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement\n\nSlow Fall\n\nTipo\n\nReacción\n\nFuncionamiento\n\nReduces el daño por caída.\n\nLa reducción aumenta con el nivel."
+      },
+      {
+        "level": 5,
+        "name": "Extra Attack",
+        "summary": "Extra Attack\n\nRealizas dos ataques con la acción Atacar.\n\nStunning Strike\n\nCosto\n\n1 Punto de Ki.\n\nFuncionamiento\n\nCuando impactas un ataque cuerpo a cuerpo puedes intentar aturdir al enemigo.\n\nSalvación\n\nConstitución.\n\nSi falla:\n\nQueda Aturdido hasta el final de tu siguiente turno.\n\nEs una de las habilidades más fuertes del Monje."
+      },
+      {
+        "level": 6,
+        "name": "Ki-Empowered Strikes",
+        "summary": "Ki-Empowered Strikes\n\nTus ataques desarmados cuentan como mágicos.\n\nNueva habilidad de la subclase.\n\nWay of Shadow\n\nShadow Step\n\nPuedes teletransportarte entre zonas oscuras.\n\nDespués obtienes ventaja en el siguiente ataque.\n\nWay of the Open Hand\n\nWholeness of Body\n\nRecuperas una gran cantidad de puntos de vida una vez por descanso largo."
+      },
+      {
+        "level": 7,
+        "name": "Evasion",
+        "summary": "Evasion\n\nCuando realizas una salvación de Destreza:\n\nSi tienes éxito\n\nNo recibes daño.\n\nSi fallas\n\nSolo recibes la mitad.\n\nStillness of Mind\n\nPuedes terminar voluntariamente efectos de:\n\n• Encantado.\n• Asustado."
+      },
+      {
+        "level": 8,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement"
+      },
+      {
+        "level": 9,
+        "name": "Unarmored Movement Improvement",
+        "summary": "Unarmored Movement Improvement\n\nPuedes correr sobre:\n\n• Paredes.\n• Agua.\n\nMientras termines tu movimiento sobre una superficie sólida."
+      },
+      {
+        "level": 10,
+        "name": "Purity of Body",
+        "summary": "Purity of Body\n\nObtienes inmunidad a:\n\n• Enfermedades.\n• Veneno."
+      },
+      {
+        "level": 11,
+        "name": "Nueva habilidad de subclase.",
+        "summary": "Nueva habilidad de subclase.\n\nOpen Hand\n\nTranquility\n\nObtienes un efecto similar a Sanctuary tras descansar.\n\nShadow\n\nCloak of Shadows\n\nPuedes volverte invisible mientras permanezcas en penumbra u oscuridad."
+      },
+      {
+        "level": 12,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement"
+      },
+      {
+        "level": 13,
+        "name": "Tongue of the Sun and Moon",
+        "summary": "Tongue of the Sun and Moon\n\nPuedes comunicarte con cualquier criatura que conozca un idioma."
+      },
+      {
+        "level": 14,
+        "name": "Diamond Soul",
+        "summary": "Diamond Soul\n\nObtienes competencia en TODAS las tiradas de salvación.\n\nAdemás puedes repetir una salvación fallida gastando 1 Punto de Ki.\n\nUna de las mejores habilidades defensivas del juego."
+      },
+      {
+        "level": 15,
+        "name": "Timeless Body",
+        "summary": "Timeless Body\n\nNo sufres los efectos del envejecimiento.\n\nNo necesitas comida ni agua con tanta frecuencia."
+      },
+      {
+        "level": 16,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement"
+      },
+      {
+        "level": 17,
+        "name": "Nueva habilidad de subclase.",
+        "summary": "Nueva habilidad de subclase.\n\nWay of the Open Hand\n\nQuivering Palm\n\nTras golpear a una criatura puedes implantar vibraciones letales.\n\nPosteriormente puedes intentar eliminarla instantáneamente o causarle una enorme cantidad de daño si supera la salvación.\n\nWay of Shadow\n\nOpportunist\n\nPuedes utilizar tu reacción para atacar cuando una criatura cercana recibe daño de otro enemigo."
+      },
+      {
+        "level": 18,
+        "name": "Empty Body",
+        "summary": "Empty Body\n\nCosto\n\n4 Puntos de Ki\n\nFuncionamiento\n\nTe vuelves invisible y obtienes resistencia a la mayoría del daño.\n\nTambién puedes proyectarte al Plano Astral gastando más Ki."
+      },
+      {
+        "level": 19,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement"
+      },
+      {
+        "level": 20,
+        "name": "Perfect Self",
+        "summary": "Perfect Self\n\nSi comienzas un combate sin puntos de Ki recuperas automáticamente 4."
+      }
+    ],
+    "subclasses": [
+      {
+        "name": "Way Of The Open Hand",
+        "summary": "Open Hand Technique\n\nCuando utilizas Flurry of Blows puedes añadir uno de estos efectos:\n\n• Derribar al enemigo.\n• Empujarlo.\n• Impedir que use reacciones.\n\nExcelente para controlar el combate.",
+        "level": 3
+      },
+      {
+        "name": "Way Of Shadow",
+        "summary": "Shadow Arts\n\nGastando Ki puedes lanzar conjuros relacionados con:\n\n• Oscuridad.\n• Silencio.\n• Invisibilidad parcial.\n• Ilusiones.\n\nIdeal para infiltración.",
+        "level": 3
+      }
+    ],
+    "subclass_choice_level": 3
+  },
+  "paladin": {
+    "name_en": "PALADIN",
+    "name_es": "PALADÍN",
+    "levels": [
+      {
+        "level": 1,
+        "name": "Divine Sense (Sentido Divino)",
+        "summary": "Divine Sense (Sentido Divino)\n\nTipo\n\nAcción\n\nUsos\n\n1 + modificador de Carisma\npor descanso largo.\n\nFuncionamiento\n\nDetectas la presencia aproximada de:\n\n• Celestiales\n• Infernales\n• No muertos\n\nTambién percibes lugares u objetos consagrados o profanados.\n\nIdeal para exploración e investigación.\n\nLay on Hands (Imposición de Manos)\n\nTipo\n\nAcción\n\nFuncionamiento\n\nObtienes una reserva de curación igual a:\n\n5 × Nivel de Paladín\n\nPuedes distribuir esa reserva libremente entre varias criaturas.\n\nTambién puedes gastar 5 puntos para neutralizar:\n\n• Enfermedades\n• Algunos venenos\n\nEjemplo\n\nNivel 5\n\nReserva:\n\n25 puntos de curación."
+      },
+      {
+        "level": 2,
+        "name": "Fighting Style",
+        "summary": "Fighting Style\n\nEscoges un estilo de combate.\n\nOpciones SRD\n\n• Defense\n• Dueling\n• Great Weapon Fighting\n• Protection\n\nSpellcasting\n\nObtienes magia divina.\n\nCaracterística\n\nCarisma\n\nEl Paladín prepara conjuros diariamente.\n\nCantidad preparada\n\nModificador de Carisma\n\n+\n\nLa mitad del nivel de Paladín\n(redondeando hacia abajo)\n\nDivine Smite\n\nTipo\n\nPasiva\n\nFuncionamiento\n\nCuando impactas con un ataque cuerpo a cuerpo puedes gastar un espacio de conjuro para infligir daño radiante adicional.\n\nDaño Base\n\n2d8 Radiante\n\nEscalado\n\n+1d8 por cada nivel superior del espacio utilizado.\n\nContra\n\n• Demonios\n• No muertos\n\ninfliges todavía más daño.\n\nEs la habilidad más característica del Paladín."
+      },
+      {
+        "level": 3,
+        "name": "Divine Health",
+        "summary": "Divine Health\n\nObtienes inmunidad a todas las enfermedades.\n\nSacred Oath\n\nEscoges un Juramento Sagrado."
+      },
+      {
+        "level": 4,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement"
+      },
+      {
+        "level": 5,
+        "name": "Extra Attack",
+        "summary": "Extra Attack\n\nRealizas dos ataques al utilizar la acción Atacar.\n\nAcceso a conjuros de nivel 2."
+      },
+      {
+        "level": 6,
+        "name": "Aura of Protection",
+        "summary": "Aura of Protection\n\nMientras estés consciente:\n\nTú y tus aliados cercanos añadís tu modificador de Carisma a todas las tiradas de salvación.\n\nRadio inicial\n\n10 pies (3 metros)\n\nA nivel 18\n\n30 pies (9 metros)\n\nEs considerada una de las mejores habilidades pasivas del juego."
+      },
+      {
+        "level": 7,
+        "name": "Nueva habilidad del Juramento.",
+        "summary": "Nueva habilidad del Juramento.\n\nOath of Devotion\n\nAura of Devotion\n\nLos aliados cercanos no pueden ser encantados.\n\nOath of the Ancients\n\nAura of Warding\n\nLos aliados cercanos obtienen resistencia al daño producido por conjuros."
+      },
+      {
+        "level": 8,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement"
+      },
+      {
+        "level": 9,
+        "name": "Acceso a conjuros de nivel 3.",
+        "summary": "Acceso a conjuros de nivel 3."
+      },
+      {
+        "level": 10,
+        "name": "Aura of Courage",
+        "summary": "Aura of Courage\n\nTú y tus aliados cercanos sois inmunes al miedo."
+      },
+      {
+        "level": 11,
+        "name": "Improved Divine Smite",
+        "summary": "Improved Divine Smite\n\nTodos tus ataques cuerpo a cuerpo infligen automáticamente:\n\n1d8 Radiante adicional.\n\nNo consume espacios de conjuro.\n\nPuede acumularse con Divine Smite."
+      },
+      {
+        "level": 12,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement"
+      },
+      {
+        "level": 13,
+        "name": "Acceso a conjuros de nivel 4.",
+        "summary": "Acceso a conjuros de nivel 4."
+      },
+      {
+        "level": 14,
+        "name": "Cleansing Touch",
+        "summary": "Cleansing Touch\n\nUsos\n\nIguales al modificador de Carisma.\n\nRecuperación\n\nDescanso largo.\n\nFuncionamiento\n\nPuedes terminar un conjuro que afecte a una criatura tocándola.\n\nExcelente contra magia enemiga."
+      },
+      {
+        "level": 15,
+        "name": "Nueva habilidad del Juramento.",
+        "summary": "Nueva habilidad del Juramento.\n\nOath of Devotion\n\nPurity of Spirit\n\nSiempre estás protegido por un efecto similar a Protection from Evil and Good.\n\nOath of the Ancients\n\nUndying Sentinel\n\nCuando deberías caer a 0 puntos de golpe puedes permanecer con 1 punto de vida una vez por descanso largo.\n\nAdemás envejeces muy lentamente."
+      },
+      {
+        "level": 16,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement"
+      },
+      {
+        "level": 17,
+        "name": "Acceso a conjuros de nivel 5.",
+        "summary": "Acceso a conjuros de nivel 5."
+      },
+      {
+        "level": 18,
+        "name": "Aura Improvements",
+        "summary": "Aura Improvements\n\nTodas tus Auras aumentan su radio a:\n\n30 pies (9 metros)"
+      },
+      {
+        "level": 19,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement"
+      },
+      {
+        "level": 20,
+        "name": "Nueva habilidad del Juramento.",
+        "summary": "Nueva habilidad del Juramento.\n\nOath of Devotion\n\nHoly Nimbus\n\nDurante 1 minuto emites una intensa luz sagrada.\n\nBeneficios\n\n• Infliges daño radiante automático a enemigos cercanos.\n• Obtienes ventaja contra conjuros de infernales y no muertos.\n\nOath of the Ancients\n\nElder Champion\n\nDurante 1 minuto:\n\n• Recuperas puntos de vida cada turno.\n• Lanzas algunos conjuros con mayor facilidad.\n• Tus enemigos tienen mayor dificultad para resistir tu magia."
+      }
+    ],
+    "subclasses": [
+      {
+        "name": "Oath Of Devotion",
+        "summary": "Sacred Weapon\n\nUtilizando Canalizar Divinidad puedes imbuir un arma con energía sagrada.\n\nAñades tu modificador de Carisma a las tiradas de ataque durante 1 minuto.\n\nTurn the Unholy\n\nAhuyentas\n\n• Infernales\n• No muertos\n\nde forma similar al Turn Undead del Clérigo.",
+        "level": 3
+      },
+      {
+        "name": "Oath Of The Ancients",
+        "summary": "Nature's Wrath\n\nInvocas lianas o energía natural para inmovilizar a una criatura.\n\nTurn the Faithless\n\nAhuyentas\n\n• Feéricos\n• Infernales",
+        "level": 3
+      }
+    ],
+    "subclass_choice_level": 3
+  },
+  "ranger": {
+    "name_en": "RANGER",
+    "name_es": "EXPLORADOR",
+    "levels": [
+      {
+        "level": 1,
+        "name": "Favored Enemy (Enemigo Predilecto)",
+        "summary": "Favored Enemy (Enemigo Predilecto)\n\nTipo\n\nPasiva\n\nFuncionamiento\n\nEliges uno o más tipos de criaturas sobre las que posees amplios conocimientos.\n\nBeneficios\n\n• Ventaja narrativa para rastrear e identificar.\n• Aprendes idiomas relacionados según la elección.\n• Mayor facilidad para obtener información sobre ellas.\n\nEjemplos\n\n• Bestias\n• Dragones\n• Gigantes\n• No muertos\n• Monstruosidades\n• Humanoides\n• Infernales\n\nNatural Explorer (Explorador Nato)\n\nTipo\n\nPasiva\n\nFuncionamiento\n\nEliges un tipo de terreno favorito.\n\nMientras viajes por él obtienes ventajas como:\n\n• No perderte por medios normales.\n• Moverte con mayor eficacia.\n• Encontrar comida con facilidad.\n• Viajar sin reducir el ritmo al explorar.\n• Mejor rastreo.\n\nEjemplos de terreno\n\n• Bosque\n• Montaña\n• Costa\n• Pantano\n• Desierto\n• Ártico\n• Pradera"
+      },
+      {
+        "level": 2,
+        "name": "Fighting Style",
+        "summary": "Fighting Style\n\nEscoges un estilo de combate.\n\nOpciones SRD\n\n• Archery\n(+2 al ataque con armas a distancia)\n\n• Defense\n(+1 CA con armadura)\n\n• Dueling\n(+2 daño con un arma)\n\n• Two-Weapon Fighting\n(Añades el modificador al daño del segundo ataque)\n\nSpellcasting\n\nCaracterística\n\nSabiduría\n\nFuncionamiento\n\nObtienes acceso a conjuros de Explorador.\n\nPreparas una cantidad limitada de conjuros conocidos, que aumentan con el nivel.\n\nLos espacios de conjuro se recuperan tras un descanso largo."
+      },
+      {
+        "level": 3,
+        "name": "Ranger Archetype",
+        "summary": "Ranger Archetype\n\nEscoges una subclase."
+      },
+      {
+        "level": 4,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement"
+      },
+      {
+        "level": 5,
+        "name": "Extra Attack",
+        "summary": "Extra Attack\n\nRealizas dos ataques al utilizar la acción Atacar.\n\nAcceso a conjuros de nivel 2."
+      },
+      {
+        "level": 6,
+        "name": "Favored Enemy Improvement",
+        "summary": "Favored Enemy Improvement\n\nEscoges un nuevo enemigo predilecto.\n\nNatural Explorer Improvement\n\nEscoges un nuevo terreno favorito."
+      },
+      {
+        "level": 7,
+        "name": "Nueva habilidad de subclase.",
+        "summary": "Nueva habilidad de subclase.\n\nHunter\n\nDefensive Tactics\n\nEscoges una opción defensiva como:\n\n• Escape the Horde\n• Multiattack Defense\n• Steel Will\n\nBeast Master\n\nExceptional Training\n\nTu compañero animal aprende nuevas órdenes y mejora su rendimiento."
+      },
+      {
+        "level": 8,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement\n\nLand's Stride\n\nIgnoras gran parte del terreno difícil no mágico.\n\nTambién resistes mejor ciertos efectos creados por plantas."
+      },
+      {
+        "level": 9,
+        "name": "Acceso a conjuros de nivel 3.",
+        "summary": "Acceso a conjuros de nivel 3."
+      },
+      {
+        "level": 10,
+        "name": "Hide in Plain Sight",
+        "summary": "Hide in Plain Sight\n\nPuedes camuflarte cuidadosamente.\n\nMientras permanezcas inmóvil obtienes una gran bonificación para pasar desapercibido.\n\nIdeal para emboscadas."
+      },
+      {
+        "level": 11,
+        "name": "Nueva habilidad de subclase.",
+        "summary": "Nueva habilidad de subclase.\n\nHunter\n\nMultiattack\n\nEscoges una técnica ofensiva.\n\nOpciones\n\n• Volley\nAtacas a múltiples enemigos a distancia.\n\n• Whirlwind Attack\nGolpeas a todos los enemigos cercanos.\n\nBeast Master\n\nBestial Fury\n\nTu compañero puede realizar más ataques durante su turno."
+      },
+      {
+        "level": 12,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement"
+      },
+      {
+        "level": 13,
+        "name": "Acceso a conjuros de nivel 4.",
+        "summary": "Acceso a conjuros de nivel 4."
+      },
+      {
+        "level": 14,
+        "name": "Vanish",
+        "summary": "Vanish\n\nPuedes ocultarte como Acción Adicional.\n\nAdemás no puedes ser rastreado mediante medios no mágicos."
+      },
+      {
+        "level": 15,
+        "name": "Nueva habilidad de subclase.",
+        "summary": "Nueva habilidad de subclase.\n\nHunter\n\nSuperior Hunter's Defense\n\nEscoges una poderosa técnica defensiva.\n\nBeast Master\n\nShare Spells\n\nCuando lanzas ciertos conjuros sobre ti mismo también afectan a tu compañero animal."
+      },
+      {
+        "level": 16,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement"
+      },
+      {
+        "level": 17,
+        "name": "Acceso a conjuros de nivel 5.",
+        "summary": "Acceso a conjuros de nivel 5."
+      },
+      {
+        "level": 18,
+        "name": "Feral Senses",
+        "summary": "Feral Senses\n\nPercibes criaturas cercanas incluso cuando no puedes verlas claramente.\n\nReduce enormemente la eficacia de enemigos invisibles."
+      },
+      {
+        "level": 19,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement"
+      },
+      {
+        "level": 20,
+        "name": "Foe Slayer",
+        "summary": "Foe Slayer\n\nUna vez por turno puedes añadir tu modificador de Sabiduría a una tirada de ataque o daño contra un enemigo predilecto.\n\nRepresenta el dominio absoluto sobre las presas que has estudiado."
+      }
+    ],
+    "subclasses": [
+      {
+        "name": "Hunter",
+        "summary": "Hunter's Prey\n\nEscoges una técnica de combate.\n\nOpciones SRD\n\n• Colossus Slayer\n\nInfliges daño adicional una vez por turno a un enemigo ya herido.\n\n• Giant Killer\n\nCuando una criatura Grande o mayor falla al golpearte puedes responder con un ataque.\n\n• Horde Breaker\n\nSi dos enemigos están muy cerca puedes realizar un ataque adicional contra otro objetivo.",
+        "level": 3
+      },
+      {
+        "name": "Beast Master",
+        "summary": "Ranger's Companion\n\nObtienes un compañero animal.\n\nPuedes darle órdenes durante el combate.\n\nSu eficacia mejora conforme aumenta tu nivel.\n\nIdeal para:\n\n• Exploración\n• Apoyo\n• Flanqueo\n• Vigilancia",
+        "level": 3
+      }
+    ],
+    "subclass_choice_level": 3
+  },
+  "rogue": {
+    "name_en": "ROGUE",
+    "name_es": "PÍCARO",
+    "levels": [
+      {
+        "level": 1,
+        "name": "Expertise",
+        "summary": "Expertise\n\nEscoge dos competencias.\n\nDuplicas tu bonificador de competencia en ellas.\n\nEjemplo\n\nSi tu competencia es +2:\n\nNormal = +2\n\nExpertise = +4\n\nIdeal para:\n\n• Sigilo\n• Percepción\n• Persuasión\n• Herramientas de ladrón\n\nSneak Attack\n\nDaño adicional:\n\n1d6\n\nEscalado\n\nNivel 1\n1d6\n\nNivel 3\n2d6\n\nNivel 5\n3d6\n\nNivel 7\n4d6\n\nNivel 9\n5d6\n\nNivel 11\n6d6\n\nNivel 13\n7d6\n\nNivel 15\n8d6\n\nNivel 17\n9d6\n\nNivel 19\n10d6\n\nThieves' Cant\n\nAprendes un lenguaje secreto utilizado por criminales y espías."
+      },
+      {
+        "level": 2,
+        "name": "Cunning Action",
+        "summary": "Cunning Action\n\nTipo\n\nAcción Adicional\n\nFuncionamiento\n\nPuedes realizar como Acción Adicional:\n\n• Dash (Correr)\n• Disengage (Retirada)\n• Hide (Ocultarse)\n\nEs una de las habilidades más importantes de la clase."
+      },
+      {
+        "level": 3,
+        "name": "Roguish Archetype",
+        "summary": "Roguish Archetype\n\nEscoges una subclase."
+      },
+      {
+        "level": 4,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement"
+      },
+      {
+        "level": 5,
+        "name": "Uncanny Dodge",
+        "summary": "Uncanny Dodge\n\nTipo\n\nReacción\n\nFuncionamiento\n\nCuando una criatura que puedes ver te golpea:\n\nReduces a la mitad el daño recibido.\n\nUna de las mejores habilidades defensivas del juego.\n\nSneak Attack\n\n3d6"
+      },
+      {
+        "level": 6,
+        "name": "Expertise",
+        "summary": "Expertise\n\nEscoges dos competencias adicionales."
+      },
+      {
+        "level": 7,
+        "name": "Evasion",
+        "summary": "Evasion\n\nFuncionamiento\n\nCuando realizas una salvación de Destreza:\n\nSi tienes éxito\n\nNo recibes daño.\n\nSi fallas\n\nSolo recibes la mitad.\n\nSneak Attack\n\n4d6"
+      },
+      {
+        "level": 8,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement"
+      },
+      {
+        "level": 9,
+        "name": "Nueva habilidad de subclase.",
+        "summary": "Nueva habilidad de subclase.\n\nThief\n\nSupreme Sneak\n\nObtienes ventaja al moverte lentamente mientras estás oculto.\n\nArcane Trickster\n\nMagical Ambush\n\nLos enemigos tienen más dificultad para resistir tus conjuros cuando estás oculto.\n\nSneak Attack\n\n5d6"
+      },
+      {
+        "level": 10,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement"
+      },
+      {
+        "level": 11,
+        "name": "Reliable Talent",
+        "summary": "Reliable Talent\n\nSiempre que realices una prueba de habilidad en la que seas competente:\n\nCualquier resultado inferior a 10 se considera un 10.\n\nUna de las mejores habilidades de utilidad del juego.\n\nSneak Attack\n\n6d6"
+      },
+      {
+        "level": 12,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement"
+      },
+      {
+        "level": 13,
+        "name": "Nueva habilidad de subclase.",
+        "summary": "Nueva habilidad de subclase.\n\nThief\n\nUse Magic Device\n\nPuedes utilizar muchos objetos mágicos aunque normalmente no cumplas sus requisitos.\n\nArcane Trickster\n\nVersatile Trickster\n\nUtilizas Mage Hand para distraer enemigos y obtener ventaja.\n\nSneak Attack\n\n7d6"
+      },
+      {
+        "level": 14,
+        "name": "Blindsense",
+        "summary": "Blindsense\n\nPercibes criaturas ocultas cercanas aunque no las veas.\n\nRadio\n\n10 pies (3 metros)"
+      },
+      {
+        "level": 15,
+        "name": "Slippery Mind",
+        "summary": "Slippery Mind\n\nObtienes competencia en salvaciones de Sabiduría.\n\nSneak Attack\n\n8d6"
+      },
+      {
+        "level": 16,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement"
+      },
+      {
+        "level": 17,
+        "name": "Nueva habilidad de subclase.",
+        "summary": "Nueva habilidad de subclase.\n\nThief\n\nThief's Reflexes\n\nDurante el primer asalto de combate actúas dos veces.\n\nEs una de las habilidades ofensivas más poderosas del juego.\n\nArcane Trickster\n\nSpell Thief\n\nPuedes intentar robar un conjuro lanzado por otro lanzador.\n\nSneak Attack\n\n9d6"
+      },
+      {
+        "level": 18,
+        "name": "Elusive",
+        "summary": "Elusive\n\nMientras no estés incapacitado:\n\nNinguna criatura obtiene ventaja contra ti."
+      },
+      {
+        "level": 19,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement\n\nSneak Attack\n\n10d6"
+      },
+      {
+        "level": 20,
+        "name": "Stroke of Luck",
+        "summary": "Stroke of Luck\n\nUna vez por descanso corto o largo puedes:\n\n• Convertir un ataque fallido en un impacto.\n\no\n\n• Convertir una prueba fallida en un resultado de 20.\n\nRepresenta la suerte extraordinaria del Pícaro legendario."
+      }
+    ],
+    "subclasses": [
+      {
+        "name": "Thief",
+        "summary": "Fast Hands\n\nPuedes utilizar ciertas acciones relacionadas con objetos usando tu Acción Adicional.\n\nEjemplos\n\n• Abrir cerraduras.\n• Desactivar trampas.\n• Utilizar herramientas.\n\nSecond-Story Work\n\nMejoras tu capacidad para trepar y saltar.",
+        "level": 3
+      },
+      {
+        "name": "Arcane Trickster",
+        "summary": "Spellcasting\n\nObtienes magia basada en:\n\nInteligencia\n\nPrincipalmente:\n\n• Ilusión\n• Encantamiento\n\nMage Hand Legerdemain\n\nTu Mano de Mago obtiene capacidades avanzadas.\n\nPuede:\n\n• Robar objetos.\n• Manipular cerraduras.\n• Operar mecanismos.\n\nSin ser detectada fácilmente.",
+        "level": 3
+      }
+    ],
+    "subclass_choice_level": 3
+  },
+  "sorcerer": {
+    "name_en": "SORCERER",
+    "name_es": "HECHICERO",
+    "levels": [
+      {
+        "level": 1,
+        "name": "Spellcasting",
+        "summary": "Spellcasting\n\nCaracterística\n\nCarisma\n\nFuncionamiento\n\nConoces un número limitado de conjuros.\n\nNo preparas conjuros diariamente.\n\nPuedes sustituir uno conocido al subir de nivel.\n\nObtienes acceso a conjuros de nivel 1 a 9.\n\nSorcerous Origin\n\nEscoges el origen de tu magia."
+      },
+      {
+        "level": 2,
+        "name": "Font of Magic",
+        "summary": "Font of Magic\n\nObtienes Puntos de Hechicería.\n\nFlexible Casting\n\nPuedes:\n\nConvertir espacios de conjuro en Puntos de Hechicería.\n\no\n\nCrear espacios de conjuro gastando Puntos de Hechicería.\n\nEs una de las habilidades más versátiles del Hechicero."
+      },
+      {
+        "level": 3,
+        "name": "Metamagic",
+        "summary": "Metamagic\n\nEscoges dos opciones.\n\nPermiten modificar la forma en que funcionan tus conjuros.\n\nOpciones SRD\n\nCareful Spell\n\nAlgunos objetivos superan automáticamente la salvación contra tu conjuro.\n\nIdeal para no dañar aliados.\n\nDistant Spell\n\nDuplicas el alcance de un conjuro.\n\nTambién puedes convertir algunos conjuros de toque en conjuros a distancia.\n\nEmpowered Spell\n\nRepites varios dados de daño.\n\nIdeal para maximizar el daño.\n\nExtended Spell\n\nDuplicas la duración del conjuro.\n\nHeightened Spell\n\nUn objetivo realiza con desventaja la primera tirada de salvación contra tu conjuro.\n\nExcelente para control.\n\nQuickened Spell\n\nCosto\n\n2 Puntos de Hechicería.\n\nConviertes un conjuro con tiempo de lanzamiento de una acción en una Acción Adicional.\n\nUna de las Metamagias más utilizadas.\n\nSubtle Spell\n\nEl conjuro no requiere componentes verbales ni somáticos.\n\nPerfecto para lanzar magia sin ser detectado.\n\nTwinned Spell\n\nCuando un conjuro solo afecta a una criatura puedes hacer que afecte a una segunda.\n\nIdeal para:\n\n• Haste\n• Hold Person\n• Polymorph\n• Invisibility"
+      },
+      {
+        "level": 4,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement"
+      },
+      {
+        "level": 5,
+        "name": "Acceso a conjuros de nivel 3.",
+        "summary": "Acceso a conjuros de nivel 3."
+      },
+      {
+        "level": 6,
+        "name": "Nueva habilidad del Origen.",
+        "summary": "Nueva habilidad del Origen.\n\nDraconic Bloodline\n\nElemental Affinity\n\nAñades tu modificador de Carisma al daño del elemento de tu linaje.\n\nTambién puedes gastar Puntos de Hechicería para obtener resistencia temporal a ese elemento.\n\nWild Magic\n\nBend Luck\n\nGastando 2 Puntos de Hechicería puedes modificar ligeramente una tirada cercana."
+      },
+      {
+        "level": 7,
+        "name": "Acceso a conjuros de nivel 4.",
+        "summary": "Acceso a conjuros de nivel 4."
+      },
+      {
+        "level": 8,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement"
+      },
+      {
+        "level": 9,
+        "name": "Acceso a conjuros de nivel 5.",
+        "summary": "Acceso a conjuros de nivel 5."
+      },
+      {
+        "level": 10,
+        "name": "Metamagic",
+        "summary": "Metamagic\n\nAprendes una tercera opción."
+      },
+      {
+        "level": 11,
+        "name": "Acceso a conjuros de nivel 6.",
+        "summary": "Acceso a conjuros de nivel 6."
+      },
+      {
+        "level": 12,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement"
+      },
+      {
+        "level": 13,
+        "name": "Acceso a conjuros de nivel 7.",
+        "summary": "Acceso a conjuros de nivel 7."
+      },
+      {
+        "level": 14,
+        "name": "Nueva habilidad del Origen.",
+        "summary": "Nueva habilidad del Origen.\n\nDraconic Bloodline\n\nDragon Wings\n\nObtienes alas permanentes.\n\nVelocidad de vuelo\n\n30 pies (9 metros).\n\nWild Magic\n\nControlled Chaos\n\nPuedes tirar dos veces en la tabla de Magia Salvaje y escoger el resultado."
+      },
+      {
+        "level": 15,
+        "name": "Acceso a conjuros de nivel 8.",
+        "summary": "Acceso a conjuros de nivel 8."
+      },
+      {
+        "level": 16,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement"
+      },
+      {
+        "level": 17,
+        "name": "Acceso a conjuros de nivel 9.",
+        "summary": "Acceso a conjuros de nivel 9.\n\nMetamagic\n\nAprendes una cuarta opción."
+      },
+      {
+        "level": 18,
+        "name": "Nueva habilidad del Origen.",
+        "summary": "Nueva habilidad del Origen.\n\nDraconic Bloodline\n\nDraconic Presence\n\nGastando 5 Puntos de Hechicería emites un aura de miedo o admiración.\n\nDuración\n\n1 minuto.\n\nWild Magic\n\nSpell Bombardment\n\nCuando obtienes el resultado máximo en un dado de daño puedes lanzar un dado adicional."
+      },
+      {
+        "level": 19,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement"
+      },
+      {
+        "level": 20,
+        "name": "Sorcerous Restoration",
+        "summary": "Sorcerous Restoration\n\nAl finalizar un descanso corto recuperas automáticamente:\n\n4 Puntos de Hechicería."
+      }
+    ],
+    "subclasses": [
+      {
+        "name": "Draconic Bloodline",
+        "summary": "Dragon Ancestor\n\nEscoges un tipo de dragón.\n\nDetermina el elemento asociado a varios poderes.\n\nDraconic Resilience\n\nMientras no lleves armadura:\n\nClase de Armadura\n\n13 + Destreza\n\nAdemás obtienes\n\n+1 punto de golpe por nivel de Hechicero.",
+        "level": 1
+      },
+      {
+        "name": "Wild Magic",
+        "summary": "Wild Magic Surge\n\nDespués de lanzar un conjuro el Director de Juego puede pedir una tirada.\n\nSi ocurre una Oleada de Magia Salvaje se produce un efecto aleatorio.\n\nLos efectos pueden ser:\n\n• Beneficios.\n• Perjuicios.\n• Cambios impredecibles.\n\nTides of Chaos\n\nObtienes ventaja en una tirada.\n\nEl Director puede recargar esta habilidad provocando una nueva Oleada de Magia Salvaje.",
+        "level": 1
+      }
+    ],
+    "subclass_choice_level": 1
+  },
+  "warlock": {
+    "name_en": "WARLOCK",
+    "name_es": "BRUJO",
+    "levels": [
+      {
+        "level": 1,
+        "name": "Otherworldly Patron",
+        "summary": "Otherworldly Patron\n(Patrón Sobrenatural)\n\nEscoges un poderoso ser del cual obtienes tus habilidades."
+      },
+      {
+        "level": 2,
+        "name": "Eldritch Invocations",
+        "summary": "Eldritch Invocations\n(Invocaciones Sobrenaturales)\n\nAprendes dos Invocaciones.\n\nSon mejoras permanentes que modifican tus habilidades.\n\nEjemplos SRD\n\nAgonizing Blast\n\nRequisito\n\nEldritch Blast\n\nAñades tu modificador de Carisma al daño de Eldritch Blast.\n\nConsiderada la mejor Invocación ofensiva.\n\nArmor of Shadows\n\nPuedes lanzar Mage Armor sobre ti mismo sin gastar espacios.\n\nBeast Speech\n\nPuedes lanzar Speak with Animals a voluntad.\n\nBeguiling Influence\n\nObtienes competencia en:\n\n• Engaño\n• Persuasión\n\nDevil's Sight\n\nPuedes ver normalmente en oscuridad mágica y no mágica hasta 120 pies (36 metros).\n\nMuy utilizada junto con Darkness.\n\nEldritch Sight\n\nPuedes lanzar Detect Magic a voluntad.\n\nFiendish Vigor\n\nPuedes lanzar False Life sobre ti mismo a voluntad como conjuro de nivel 1.\n\nMask of Many Faces\n\nPuedes lanzar Disguise Self a voluntad.\n\nRepelling Blast\n\nCuando Eldritch Blast impacta puedes empujar al objetivo 10 pies (3 metros).\n\nThief of Five Fates\n\nPuedes lanzar Bane utilizando un espacio de conjuro del Brujo."
+      },
+      {
+        "level": 3,
+        "name": "Pact Boon",
+        "summary": "Pact Boon\n(Don del Pacto)\n\nEscoges uno."
+      },
+      {
+        "level": 4,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement"
+      },
+      {
+        "level": 5,
+        "name": "Acceso a conjuros de nivel 3.",
+        "summary": "Acceso a conjuros de nivel 3.\n\nObtienes una nueva Invocación.\n\nAlgunas Invocaciones avanzadas se desbloquean desde este nivel.\n\nEjemplos\n\n• Thirsting Blade\n(Pacto de la Hoja)\n\nRealizas un ataque adicional.\n\nBook of Ancient Secrets\n(Pacto del Tomo)\n\nAprendes conjuros rituales de cualquier clase."
+      },
+      {
+        "level": 6,
+        "name": "Nueva habilidad del Patrón.",
+        "summary": "Nueva habilidad del Patrón.\n\nThe Fiend\n\nDark One's Own Luck\n\nUna vez por descanso puedes añadir 1d10 a una prueba o salvación.\n\nThe Archfey\n\nMisty Escape\n\nCuando recibes daño puedes volverte invisible y teletransportarte 60 pies (18 metros)."
+      },
+      {
+        "level": 7,
+        "name": "Acceso a conjuros de nivel 4.",
+        "summary": "Acceso a conjuros de nivel 4.\n\nNueva Invocación."
+      },
+      {
+        "level": 8,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement"
+      },
+      {
+        "level": 9,
+        "name": "Acceso a conjuros de nivel 5.",
+        "summary": "Acceso a conjuros de nivel 5.\n\nNueva Invocación."
+      },
+      {
+        "level": 10,
+        "name": "Nueva habilidad del Patrón.",
+        "summary": "Nueva habilidad del Patrón.\n\nThe Fiend\n\nFiendish Resilience\n\nObtienes resistencia a un tipo de daño elegido tras cada descanso.\n\nThe Archfey\n\nBeguiling Defenses\n\nEres inmune al estado Encantado.\n\nAdemás puedes devolver ese efecto al lanzador."
+      },
+      {
+        "level": 11,
+        "name": "Mystic Arcanum (Nivel 6)",
+        "summary": "Mystic Arcanum (Nivel 6)\n\nAprendes un conjuro de nivel 6.\n\nPuede lanzarse una vez por Descanso Largo.\n\nNo consume espacios de conjuro."
+      },
+      {
+        "level": 12,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement\n\nNueva Invocación."
+      },
+      {
+        "level": 13,
+        "name": "Mystic Arcanum",
+        "summary": "Mystic Arcanum\n\nNivel 7."
+      },
+      {
+        "level": 14,
+        "name": "Nueva habilidad del Patrón.",
+        "summary": "Nueva habilidad del Patrón.\n\nThe Fiend\n\nHurl Through Hell\n\nTras impactar una criatura puedes enviarla brevemente a los Nueve Infiernos.\n\nCuando vuelve recibe un enorme daño psíquico.\n\nThe Archfey\n\nDark Delirium\n\nEncantas a una criatura y la sumerges en una ilusión feérica durante 1 minuto."
+      },
+      {
+        "level": 15,
+        "name": "Mystic Arcanum",
+        "summary": "Mystic Arcanum\n\nNivel 8.\n\nNueva Invocación."
+      },
+      {
+        "level": 16,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement"
+      },
+      {
+        "level": 17,
+        "name": "Mystic Arcanum",
+        "summary": "Mystic Arcanum\n\nNivel 9.\n\nNueva Invocación."
+      },
+      {
+        "level": 18,
+        "name": "Obtienes una Invocación adicional.",
+        "summary": "Obtienes una Invocación adicional."
+      },
+      {
+        "level": 19,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement"
+      },
+      {
+        "level": 20,
+        "name": "Eldritch Master",
+        "summary": "Eldritch Master\n\nDurante 1 minuto puedes pedir poder a tu Patrón.\n\nAl finalizar recuperas todos tus espacios de Magia del Pacto.\n\nUna vez por Descanso Largo."
+      }
+    ],
+    "subclasses": [
+      {
+        "name": "The Archfey",
+        "summary": "Fey Presence\n\nTipo\n\nAcción\n\nUna vez por Descanso Corto o Largo.\n\nFuncionamiento\n\nLas criaturas cercanas realizan una salvación de Sabiduría.\n\nSi fallan puedes hacer que:\n\n• Queden Asustadas.\n\no\n\n• Queden Encantadas.\n\nHasta el final de tu siguiente turno.",
+        "level": 1
+      },
+      {
+        "name": "The Fiend",
+        "summary": "Dark One's Blessing\n\nCada vez que reduces una criatura hostil a 0 puntos de golpe obtienes:\n\nPuntos de Golpe Temporales\n\nIguales a:\n\nCarisma\n\n+\n\nNivel de Brujo.\n\nExcelente para sobrevivir durante combates largos.",
+        "level": 1
+      },
+      {
+        "name": "Pact Of The Blade",
+        "summary": "Puedes invocar un arma de pacto.\n\nSiempre eres competente con ella.\n\nIdeal para Brujos de combate.",
+        "level": 1
+      },
+      {
+        "name": "Pact Of The Chain",
+        "summary": "Obtienes un familiar especial.\n\nOpciones SRD\n\n• Imp\n• Pseudodragón\n• Quasit\n• Sprite\n\nMucho más poderoso que un Familiar normal.",
+        "level": 1
+      },
+      {
+        "name": "Pact Of The Tome",
+        "summary": "Obtienes un Libro de las Sombras.\n\nAprendes tres Cantrips adicionales de cualquier lista de conjuros.\n\nExcelente para utilidad.",
+        "level": 1
+      }
+    ],
+    "subclass_choice_level": 1
+  },
+  "artificer": {
+    "name_en": "ARTIFICER",
+    "name_es": "ARTÍFICE",
+    "levels": [
+      {
+        "level": 1,
+        "name": "Lanzamiento de Conjuros",
+        "summary": "Lanzamiento de Conjuros\n\nAtributo:\n\nInteligencia\n\nEl Artífice prepara conjuros diariamente.\n\nCantidad preparada:\n\nModificador de Inteligencia\n\n+\n\nMitad del nivel de Artífice\n\nUtiliza:\n\n• Herramientas como foco mágico.\n• Objetos creados.\n• Inventos.\n\nExperto con Herramientas\n\nObtienes competencia con herramientas adicionales.\n\nPuedes usar herramientas de artesano como foco\npara lanzar magia."
+      },
+      {
+        "level": 2,
+        "name": "Infundir Objeto",
+        "summary": "Infundir Objeto\n\nAprendes Infusiones Mágicas.\n\nPuedes convertir objetos normales en objetos mágicos.\n\nEjemplos:\n\nDefensa Mejorada\n\nUn objeto obtiene:\n\n+1 CA\n\nArma Mejorada\n\nUn arma obtiene:\n\n+1 ataque\n\n+1 daño\n\nHomúnculo Servicial\n\nCreas una criatura artificial pequeña.\n\nPuede:\n\n• Volar.\n• Ayudar.\n• Atacar.\n• Transportar objetos.\n\nRepetir Disparo\n\nUn arma a distancia obtiene:\n\n+1 ataque\n\n+1 daño\n\nAlmacenamiento de Conjuros\n\nPermite guardar magia en objetos."
+      },
+      {
+        "level": 3,
+        "name": "Especialización de Artífice",
+        "summary": "Especialización de Artífice\n\nEscoges una subclase.\n\nOpciones principales:\n\n• Alquimista\n• Artillero\n• Herrero de Batalla\n• Armadura\n\nLa Herramienta Correcta\n\nPuedes crear temporalmente herramientas\nespecializadas."
+      },
+      {
+        "level": 4,
+        "name": "Mejora de Característica",
+        "summary": "Mejora de Característica"
+      },
+      {
+        "level": 5,
+        "name": "Especialización Mejorada",
+        "summary": "Especialización Mejorada\n\nObtienes:\n\nAtaque Extra\n\n(Excepto algunas configuraciones)\n\nTus conjuros ofensivos mejoran."
+      },
+      {
+        "level": 6,
+        "name": "Experto en Herramientas",
+        "summary": "Experto en Herramientas\n\nDuplicas competencia con herramientas."
+      },
+      {
+        "level": 7,
+        "name": "Destello de Genio",
+        "summary": "Destello de Genio\n\nPuedes añadir Inteligencia a:\n\n• Pruebas de habilidad.\n• Salvaciones.\n\nUso:\n\nModificador de Inteligencia"
+      },
+      {
+        "level": 8,
+        "name": "Mejora de Característica",
+        "summary": "Mejora de Característica"
+      },
+      {
+        "level": 9,
+        "name": "Rasgo de Especialización",
+        "summary": "Rasgo de Especialización"
+      },
+      {
+        "level": 10,
+        "name": "Objeto Mágico Adepto",
+        "summary": "Objeto Mágico Adepto\n\nPuedes crear más objetos mágicos.\n\nObtienes más infusiones conocidas."
+      },
+      {
+        "level": 11,
+        "name": "Almacenamiento de Conjuros",
+        "summary": "Almacenamiento de Conjuros\n\nGuardas un conjuro dentro de un objeto.\n\nPuede ser utilizado por:\n\n• Tú.\n• Aliados."
+      },
+      {
+        "level": 12,
+        "name": "Mejora de Característica",
+        "summary": "Mejora de Característica"
+      },
+      {
+        "level": 13,
+        "name": "Acceso a conjuros superiores.",
+        "summary": "Acceso a conjuros superiores."
+      },
+      {
+        "level": 14,
+        "name": "Maestro de Objetos Mágicos",
+        "summary": "Maestro de Objetos Mágicos\n\nPuedes ignorar requisitos de objetos mágicos.\n\nPuedes usar:\n\n• Pergaminos.\n• Objetos restringidos."
+      },
+      {
+        "level": 15,
+        "name": "Rasgo final de Especialización.",
+        "summary": "Rasgo final de Especialización."
+      },
+      {
+        "level": 16,
+        "name": "Mejora de Característica",
+        "summary": "Mejora de Característica"
+      },
+      {
+        "level": 17,
+        "name": "Mayor poder de infusiones y objetos mágicos.",
+        "summary": "Mayor poder de infusiones y objetos mágicos."
+      },
+      {
+        "level": 18,
+        "name": "Maestro de Infusiones",
+        "summary": "Maestro de Infusiones\n\nPuedes mantener más objetos mágicos activos."
+      },
+      {
+        "level": 19,
+        "name": "Mejora de Característica",
+        "summary": "Mejora de Característica"
+      },
+      {
+        "level": 20,
+        "name": "Alma del Artífice",
+        "summary": "Alma del Artífice\n\nObtienes:\n\n• Bonificador a salvaciones.\n• Resistencia a muerte.\n• Mayor conexión con objetos mágicos."
+      }
+    ],
+    "subclasses": [
+      {
+        "name": "Alquimista",
+        "summary": "Especialista en pociones y apoyo mágico.\n\nNivel 3\n\nElixir Experimental\n\nCreas pociones aleatorias.\n\nEjemplos:\n\n• Curación.\n• Velocidad.\n• Resistencia.\n• Transformación.\n\nNivel 5\n\nAlquimista Sabio\n\nAñades Inteligencia al daño de ciertos conjuros.\n\nMejoras:\n\n• Curación.\n• Daño ácido.\n• Daño fuego.\n\nNivel 9\n\nReactivos Restauradores\n\nTus elixires pueden eliminar:\n\n• Ceguera.\n• Sordera.\n• Parálisis.\n• Veneno.\n\nNivel 15\n\nMaestría Química\n\nObtienes resistencia a daño químico.\n\nTus pociones son más poderosas.",
+        "level": 3
+      },
+      {
+        "name": "(Artillerist)",
+        "summary": "Especialista en armas mágicas.\n\nNivel 3\n\nCañón Eldritch\n\nCreas un cañón mágico.\n\nTipos:\n\nLanzallamas\n\nDaño de fuego en área.\n\nBalista de Fuerza\n\nEmpuja enemigos.\n\nProtector\n\nEntrega puntos de golpe temporales.\n\nNivel 5\n\nArma de Fuego Arcana\n\nAñade daño extra al cañón.\n\nNivel 9\n\nCañón Explosivo\n\nMejora daño y resistencia.\n\nNivel 15\n\nPosición Fortificada\n\nPuedes crear dos cañones.\n\nLos aliados obtienen cobertura.",
+        "level": 3
+      },
+      {
+        "name": "(Battle Smith)",
+        "summary": "Especialista en combate y constructos.\n\nNivel 3\n\nCompetencia Marcial\n\nPuedes usar:\n\n• Armas marciales.\n• Armaduras pesadas.\n\nServidor de Acero\n\nCreas un compañero mecánico.\n\nPuede:\n\n• Atacar.\n• Defender.\n• Proteger aliados.\n\nNivel 5\n\nAtaque Extra\n\nPuedes atacar dos veces.\n\nNivel 9\n\nGolpe Arcano Mejorado\n\nAñades daño de fuerza.\n\nNivel 15\n\nServidor Mejorado\n\nTu constructo obtiene mejoras.",
+        "level": 3
+      },
+      {
+        "name": "(Armorer)",
+        "summary": "Especialista en armaduras mágicas.\n\nNivel 3\n\nArmadura Arcana\n\nTransformas una armadura en una armadura mágica.\n\nObtienes:\n\n• No requiere Fuerza.\n• Puede funcionar como foco.\n\nModos:\n\nGuardián\n\nOrientado a defensa.\n\nHabilidades:\n\n• Guanteletes de trueno.\n• Protección de aliados.\n\nInfiltrador\n\nOrientado a sigilo.\n\nHabilidades:\n\n• Velocidad.\n• Ataques a distancia.\n• Sigilo.\n\nNivel 5\n\nAtaque Extra\n\nPuedes atacar dos veces.\n\nNivel 9\n\nModificaciones de Armadura\n\nPuedes añadir más infusiones.\n\nNivel 15\n\nArmadura Perfecta\n\nObtienes mejoras defensivas.",
+        "level": 3
+      }
+    ],
+    "subclass_choice_level": 3
+  },
+  "wizard": {
+    "name_en": "Wizard",
+    "name_es": "Mago",
+    "levels": [
+      {
+        "level": 1,
+        "name": "Spellcasting",
+        "summary": "Característica\n\nInteligencia\n\nFuncionamiento\n\nEl Mago prepara conjuros diariamente.\n\nCantidad preparada\n\nModificador de Inteligencia\n\n+\n\nNivel de Mago\n\n(Mínimo 1)\n\nPuedes cambiar la lista tras cada Descanso Largo."
+      },
+      {
+        "level": 1,
+        "name": "Spellbook",
+        "summary": "Comienzas con un Libro de Conjuros.\n\nPuedes añadir nuevos conjuros mediante investigación o copiándolos desde:\n\n• Pergaminos.\n• Otros libros de conjuros.\n\nCopiar un conjuro requiere:\n\n• Tiempo.\n• Oro.\n• Que sea de un nivel que puedas preparar."
+      },
+      {
+        "level": 1,
+        "name": "Ritual Casting",
+        "summary": "Si un conjuro tiene la etiqueta Ritual y está escrito en tu Libro de Conjuros:\n\nPuedes lanzarlo como Ritual.\n\nNo consume espacios de conjuro.\n\nEl lanzamiento tarda 10 minutos adicionales."
+      },
+      {
+        "level": 2,
+        "name": "Arcane Recovery",
+        "summary": "Una vez por Descanso Corto.\n\nRecuperas espacios de conjuro cuyo nivel combinado sea igual o inferior a:\n\nLa mitad de tu nivel de Mago\n(redondeando hacia arriba).\n\nNo puedes recuperar espacios de nivel 6 o superior."
+      },
+      {
+        "level": 2,
+        "name": "Arcane Tradition",
+        "summary": "Escoges una Escuela de Magia.\n\nSRD\n\n• School of Abjuration\n• School of Evocation"
+      },
+      {
+        "level": 3,
+        "name": "Acceso a conjuros de nivel 2.",
+        "summary": "Acceso a conjuros de nivel 2."
+      },
+      {
+        "level": 4,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement"
+      },
+      {
+        "level": 5,
+        "name": "Acceso a conjuros de nivel 3.",
+        "summary": "Acceso a conjuros de nivel 3."
+      },
+      {
+        "level": 7,
+        "name": "Acceso a conjuros de nivel 4.",
+        "summary": "Acceso a conjuros de nivel 4."
+      },
+      {
+        "level": 8,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement"
+      },
+      {
+        "level": 9,
+        "name": "Acceso a conjuros de nivel 5.",
+        "summary": "Acceso a conjuros de nivel 5."
+      },
+      {
+        "level": 11,
+        "name": "Acceso a conjuros de nivel 6.",
+        "summary": "Acceso a conjuros de nivel 6."
+      },
+      {
+        "level": 12,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement"
+      },
+      {
+        "level": 13,
+        "name": "Acceso a conjuros de nivel 7.",
+        "summary": "Acceso a conjuros de nivel 7."
+      },
+      {
+        "level": 15,
+        "name": "Acceso a conjuros de nivel 8.",
+        "summary": "Acceso a conjuros de nivel 8."
+      },
+      {
+        "level": 16,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement"
+      },
+      {
+        "level": 17,
+        "name": "Acceso a conjuros de nivel 9.",
+        "summary": "Acceso a conjuros de nivel 9."
+      },
+      {
+        "level": 18,
+        "name": "Spell Mastery",
+        "summary": "Escoge:\n\n• Un conjuro de nivel 1.\n• Un conjuro de nivel 2.\n\nPuedes lanzarlos a voluntad sin gastar espacios de conjuro.\n\nPuedes cambiar estas elecciones tras un descanso largo."
+      },
+      {
+        "level": 19,
+        "name": "Ability Score Improvement",
+        "summary": "Ability Score Improvement"
+      },
+      {
+        "level": 20,
+        "name": "Signature Spells",
+        "summary": "Escoge dos conjuros de nivel 3 de tu Libro de Conjuros.\n\nCada uno puede lanzarse gratuitamente una vez por Descanso Corto.\n\nDespués pueden seguir lanzándose normalmente usando espacios de conjuro."
+      }
+    ],
+    "subclasses": [
+      {
+        "name": "School of Abjuration",
+        "level": 2,
+        "summary": "Especialista en defensa mágica. Obtienes el Arcane Ward, un escudo mágico que absorbe daño y puede recargarse lanzando conjuros de Abjuración.",
+        "features": [
+          {
+            "level": 2,
+            "name": "Abjuration Savant",
+            "summary": "Copiar conjuros de Abjuración cuesta:\n\n• La mitad del tiempo.\n• La mitad del oro."
+          },
+          {
+            "level": 2,
+            "name": "Arcane Ward",
+            "summary": "Cuando lanzas un conjuro de Abjuración de nivel 1 o superior creas un escudo mágico.\n\nEl escudo absorbe daño antes que tú.\n\nPuedes restaurarlo lanzando más conjuros de Abjuración."
+          },
+          {
+            "level": 6,
+            "name": "Projected Ward",
+            "summary": "Puedes utilizar tu Arcane Ward para proteger a un aliado cercano."
+          },
+          {
+            "level": 10,
+            "name": "Improved Abjuration",
+            "summary": "Añades tu bonificador de competencia a pruebas relacionadas con Counterspell y Dispel Magic."
+          },
+          {
+            "level": 14,
+            "name": "Spell Resistance",
+            "summary": "Obtienes ventaja en las tiradas de salvación contra conjuros.\n\nAdemás tienes resistencia al daño causado por conjuros."
+          }
+        ]
+      },
+      {
+        "name": "School of Evocation",
+        "level": 2,
+        "summary": "Especialista en daño mágico. Puedes proteger a tus aliados del daño en área de tus propios conjuros de Evocación y maximizar su daño.",
+        "features": [
+          {
+            "level": 2,
+            "name": "Evocation Savant",
+            "summary": "Copiar conjuros de Evocación cuesta:\n\n• La mitad del tiempo.\n• La mitad del oro."
+          },
+          {
+            "level": 2,
+            "name": "Sculpt Spells",
+            "summary": "Cuando lanzas un conjuro de Evocación que afecta un área:\n\nPuedes proteger a varios aliados para que no sufran el daño completo.\n\nIdeal para:\n\n• Fireball\n• Cone of Cold\n• Shatter"
+          },
+          {
+            "level": 6,
+            "name": "Potent Cantrip",
+            "summary": "Tus Cantrips ofensivos siguen causando parte de su efecto incluso cuando el enemigo supera la tirada de salvación."
+          },
+          {
+            "level": 10,
+            "name": "Empowered Evocation",
+            "summary": "Añades tu modificador de Inteligencia al daño de los conjuros de Evocación."
+          },
+          {
+            "level": 14,
+            "name": "Overchannel",
+            "summary": "Puedes maximizar automáticamente el daño de un conjuro de Evocación de nivel 5 o inferior.\n\nSi utilizas esta habilidad repetidamente antes de un descanso largo, recibes daño necrótico acumulativo."
+          }
+        ]
+      }
+    ],
+    "subclass_choice_level": 2
+  }
+}

@@ -47,6 +47,17 @@ type WeaponData = {
 type SpellData = {
   name: string;
   level: number;
+  school?: string | null;
+  attackType?: "melee_spell" | "ranged_spell" | null;
+  savingThrow?: string | null;
+  damageDice?: string | null;
+  damageType?: string | null;
+  healingDice?: string | null;
+  areaShape?: string | null;
+  areaSizeFeet?: number | null;
+  description?: string | null;
+  higherLevels?: string | null;
+  isInCatalog?: boolean;
 };
 
 type Combatant = {
@@ -181,6 +192,15 @@ export default function CombatActionPanel({
       .catch(() => onHighlightTiles([]));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, selectedCombatant?.id, selectedCombatant?.movementUsed]);
+
+  // Auto-rellenar dados/tipo/salvación cuando el hechizo seleccionado está en el catálogo
+  useEffect(() => {
+    if (!selectedSpell || !selectedSpell.isInCatalog) return;
+    if (selectedSpell.damageDice) setSpellDamageDice(selectedSpell.damageDice);
+    if (selectedSpell.damageType) setSpellDamageType(selectedSpell.damageType);
+    setSpellSavingThrow(selectedSpell.savingThrow ?? "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSpell?.name]);
 
   async function handleAttack() {
     if (!selectedCombatant || !selectedWeapon || !selectedTargetId) return;
@@ -633,6 +653,21 @@ export default function CombatActionPanel({
                     ))}
                   </select>
                 </div>
+
+                {selectedSpell?.isInCatalog ? (
+                  <div className="rounded-2xl border border-purple-500/20 bg-purple-500/10 p-3 text-xs text-purple-200">
+                    <p className="font-bold text-purple-300">✓ En el catálogo — dados y tipo autocompletados</p>
+                    {selectedSpell.school && <p className="mt-1">Escuela: {selectedSpell.school}</p>}
+                    {selectedSpell.description && <p className="mt-1 text-purple-200/80">{selectedSpell.description}</p>}
+                    {selectedSpell.higherLevels && (
+                      <p className="mt-1 text-purple-200/60">A niveles superiores: {selectedSpell.higherLevels}</p>
+                    )}
+                  </div>
+                ) : selectedSpell ? (
+                  <p className="rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs text-zinc-500">
+                    Este hechizo no está en el catálogo — completa los dados y tipo manualmente.
+                  </p>
+                ) : null}
 
                 {spellSaveDc > 0 && (
                   <p className="text-xs text-purple-300">
