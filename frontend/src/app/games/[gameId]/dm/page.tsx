@@ -248,7 +248,9 @@ export default function DmScreenPage() {
   async function applyRest(type: "short" | "long") {
     if (!gameId) return;
     const confirmed = window.confirm(
-      `¿Aplicar descanso ${type === "long" ? "largo" : "corto"}? Restaura PG completos y espacios de conjuro de todos los jugadores.`
+      type === "long"
+        ? "¿Aplicar descanso largo? Restaura PG completos y todos los espacios de conjuro de todos los jugadores."
+        : "¿Aplicar descanso corto? Restaura la mitad de los PG máximos y la mitad (redondeado hacia abajo) de los espacios de conjuro gastados de todos los jugadores."
     );
     if (!confirmed) return;
 

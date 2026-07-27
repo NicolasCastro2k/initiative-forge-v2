@@ -363,8 +363,10 @@ dmRouter.post("/games/:gameId/party/level-up", async (req, res) => {
 // ─── Descanso corto / largo ─────────────────────────────────────────────────
 // Body: { type: "short" | "long" }
 //
-// Simplificación: ambos tipos de descanso restauran PG completos y todos los
-// espacios de conjuro gastados de cada jugador activo.
+// Descanso largo: restaura PG completos y todos los espacios de conjuro.
+// Descanso corto: recupera la mitad de los PG máximos (redondeado hacia
+// abajo, sin superar el máximo) y restaura la mitad (redondeado hacia abajo)
+// de los espacios de conjuro gastados en cada nivel.
 
 dmRouter.post("/games/:gameId/party/rest", async (req, res) => {
   try {
@@ -391,16 +393,35 @@ dmRouter.post("/games/:gameId/party/rest", async (req, res) => {
       const spells = (sheet.spells ?? {}) as Record<string, unknown>;
       const slots = (spells.slots ?? {}) as Record<string, { total: number; expended: number }>;
 
-      const restoredSlots: Record<string, { total: number; expended: number }> = {};
-      Object.entries(slots).forEach(([level, slot]) => {
-        restoredSlots[level] = { total: slot.total, expended: 0 };
-      });
-
       const maxHp = Number(combat.maxHp ?? 0);
+      const currentHp = Number(combat.currentHp ?? 0);
+
+      let newHp: number;
+      const restoredSlots: Record<string, { total: number; expended: number }> = {};
+
+      if (restType === "long") {
+        // Descanso largo: restaura PG completos y todos los espacios de conjuro.
+        newHp = maxHp;
+        Object.entries(slots).forEach(([level, slot]) => {
+          restoredSlots[level] = { total: slot.total, expended: 0 };
+        });
+      } else {
+        // Descanso corto: recupera la mitad de los PG máximos (sin superar el
+        // máximo), y restaura la mitad (redondeado hacia abajo) de los
+        // espacios de conjuro gastados en cada nivel.
+        const halfMaxHp = Math.floor(maxHp / 2);
+        newHp = Math.min(maxHp, currentHp + halfMaxHp);
+
+        Object.entries(slots).forEach(([level, slot]) => {
+          const recovered = Math.floor(slot.expended / 2);
+          const newExpended = Math.max(0, slot.expended - recovered);
+          restoredSlots[level] = { total: slot.total, expended: newExpended };
+        });
+      }
 
       const newSheetData = {
         ...sheet,
-        combat: { ...combat, currentHp: maxHp },
+        combat: { ...combat, currentHp: newHp },
         spells: { ...spells, slots: restoredSlots },
       };
 
