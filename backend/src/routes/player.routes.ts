@@ -103,7 +103,11 @@ playerRouter.get("/games/:gameId/dice/log", async (req, res) => {
 });
 
 // ─── POST /games/:gameId/dice/roll ─────────────────────────────────────────────
-// Body: { sides: 4|6|8|10|12|20|100, count: number, modifier?: number, characterName?: string }
+// Body: { sides: 4|6|8|10|12|20|100, count: number, modifier?: number, characterName?: string, label?: string }
+// `label` es opcional y viene de la Pantalla de Jugador cuando la tirada se
+// origina en una característica/habilidad/salvación/ataque de la ficha
+// (p.ej. "Percepción", "Salvación de Destreza", "Ataque: Espada larga").
+// Solo se usa para mostrar de dónde salió el modificador; no afecta el cálculo.
 
 const ALLOWED_SIDES = [4, 6, 8, 10, 12, 20, 100];
 
@@ -131,7 +135,8 @@ playerRouter.post("/games/:gameId/dice/roll", async (req, res) => {
 
     const total = rolls.reduce((sum, r) => sum + r, 0) + modifier;
     const modText = modifier !== 0 ? (modifier > 0 ? `+${modifier}` : `${modifier}`) : "";
-    const expression = `${count}d${sides}${modText}`;
+    const label = req.body.label ? String(req.body.label).slice(0, 60) : "";
+    const expression = `${label ? `${label} · ` : ""}${count}d${sides}${modText}`;
 
     const characterName = req.body.characterName ? String(req.body.characterName) : user.name;
 

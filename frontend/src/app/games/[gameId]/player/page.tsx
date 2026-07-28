@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { io, Socket } from "socket.io-client";
+import { AbilityKey, abilityLabels, skillLabels, getModifier, signed } from "@/utils/dnd5e";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
@@ -17,10 +18,16 @@ type EquipmentItem = { quantity: number; name: string; type?: "weapon" | "consum
 
 type SheetData = {
   identity: { characterName: string; className: string; level: number; race: string };
+  abilities: Record<AbilityKey, number>;
   combat: { armorClass: number; maxHp: number; currentHp: number; temporaryHp: number; speed: number };
   attacks: Attack[];
   equipment: EquipmentItem[];
   currency: { cp: number; sp: number; ep: number; gp: number; pp: number };
+  proficiencies: {
+    proficiencyBonus: number;
+    savingThrows: Record<AbilityKey, boolean>;
+    skills: Record<string, boolean>;
+  };
   spells: {
     spellSaveDc: number;
     spellAttackBonus: number;
@@ -66,10 +73,22 @@ function getImageUrl(path: string | null) {
 function getDefaultSheetData(): SheetData {
   return {
     identity: { characterName: "", className: "", level: 1, race: "" },
+    abilities: { strength: 10, dexterity: 10, constitution: 10, intelligence: 10, wisdom: 10, charisma: 10 },
     combat: { armorClass: 10, maxHp: 10, currentHp: 10, temporaryHp: 0, speed: 30 },
     attacks: [],
     equipment: [],
     currency: { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 },
+    proficiencies: {
+      proficiencyBonus: 2,
+      savingThrows: { strength: false, dexterity: false, constitution: false, intelligence: false, wisdom: false, charisma: false },
+      skills: {
+        acrobatics: false, animalHandling: false, arcana: false, athletics: false,
+        deception: false, history: false, insight: false, intimidation: false,
+        investigation: false, medicine: false, nature: false, perception: false,
+        performance: false, persuasion: false, religion: false, sleightOfHand: false,
+        stealth: false, survival: false,
+      },
+    },
     spells: {
       spellSaveDc: 0,
       spellAttackBonus: 0,
@@ -83,12 +102,21 @@ function normalizeSheetData(raw: unknown): SheetData {
   const defaults = getDefaultSheetData();
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return defaults;
   const r = raw as Record<string, unknown>;
+  const rawProf = (r.proficiencies ?? {}) as Record<string, unknown>;
+
   return {
     identity: { ...defaults.identity, ...((r.identity ?? {}) as object) },
+    abilities: { ...defaults.abilities, ...((r.abilities ?? {}) as object) },
     combat: { ...defaults.combat, ...((r.combat ?? {}) as object) },
     attacks: Array.isArray(r.attacks) ? (r.attacks as Attack[]) : [],
     equipment: Array.isArray(r.equipment) ? (r.equipment as EquipmentItem[]) : [],
     currency: { ...defaults.currency, ...((r.currency ?? {}) as object) },
+    proficiencies: {
+      ...defaults.proficiencies,
+      ...rawProf,
+      savingThrows: { ...defaults.proficiencies.savingThrows, ...((rawProf.savingThrows ?? {}) as object) },
+      skills: { ...defaults.proficiencies.skills, ...((rawProf.skills ?? {}) as object) },
+    },
     spells: {
       ...defaults.spells,
       ...((r.spells ?? {}) as object),
@@ -118,6 +146,7 @@ export default function PlayerScreenPage() {
 
   const [diceLog, setDiceLog] = useState<DiceRoll[]>([]);
   const [isDiceModalOpen, setIsDiceModalOpen] = useState(false);
+  const [diceTab, setDiceTab] = useState<"personalizado" | "caracteristica" | "habilidad" | "salvacion" | "ataque">("habilidad");
   const [diceSides, setDiceSides] = useState(20);
   const [diceCount, setDiceCount] = useState(1);
   const [diceModifier, setDiceModifier] = useState(0);
@@ -270,10 +299,19 @@ export default function PlayerScreenPage() {
   }
 
   // ─── Dados ──────────────────────────────────────────────────────────────────
-  async function rollDice() {
+  // Cuando se pasan opts (tiradas automáticas de característica/habilidad/
+  // salvación/ataque), se usan esos valores en vez de los del formulario
+  // "Personalizado". El modificador se calcula siempre a partir de la ficha
+  // del personaje (sheetData.abilities / proficiencies), nunca a mano.
+  async function rollDice(opts?: { sides: number; count: number; modifier: number; label?: string }) {
     if (!gameId) return;
     setIsRolling(true);
     setError("");
+
+    const sides = opts?.sides ?? diceSides;
+    const count = opts?.count ?? diceCount;
+    const modifier = opts?.modifier ?? diceModifier;
+    const label = opts?.label;
 
     try {
       const response = await fetch(`${API_URL}/games/${gameId}/dice/roll`, {
@@ -281,9 +319,10 @@ export default function PlayerScreenPage() {
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          sides: diceSides,
-          count: diceCount,
-          modifier: diceModifier,
+          sides,
+          count,
+          modifier,
+          label,
           characterName: sheetData.identity.characterName || currentUser?.name,
         }),
       });
@@ -303,6 +342,23 @@ export default function PlayerScreenPage() {
     } finally {
       setIsRolling(false);
     }
+  }
+
+  function saveModifier(ability: AbilityKey) {
+    const base = getModifier(sheetData.abilities[ability]);
+    const proficient = sheetData.proficiencies.savingThrows[ability];
+    return base + (proficient ? sheetData.proficiencies.proficiencyBonus : 0);
+  }
+
+  function skillModifier(skill: { key: string; ability: AbilityKey }) {
+    const base = getModifier(sheetData.abilities[skill.ability]);
+    const proficient = sheetData.proficiencies.skills[skill.key];
+    return base + (proficient ? sheetData.proficiencies.proficiencyBonus : 0);
+  }
+
+  function attackModifier(attack: Attack) {
+    const parsed = parseInt(String(attack.attackBonus).replace(/[^\d-]/g, ""), 10);
+    return Number.isFinite(parsed) ? parsed : 0;
   }
 
   // ─── Inventario filtrado ────────────────────────────────────────────────────
@@ -584,41 +640,148 @@ export default function PlayerScreenPage() {
           <div onClick={(e) => e.stopPropagation()} className="w-full max-w-sm rounded-3xl border border-zinc-800 bg-zinc-900 p-6 shadow-2xl">
             <h3 className="text-xl font-black">Lanzar dados</h3>
 
-            <div className="mt-4">
-              <label className="mb-1 block text-sm font-bold text-zinc-300">Tipo de dado</label>
-              <div className="grid grid-cols-4 gap-2">
-                {DICE_TYPES.map((d) => (
-                  <button key={d} type="button" onClick={() => setDiceSides(d)}
-                    className={[
-                      "rounded-xl border px-3 py-2 text-sm font-bold transition",
-                      diceSides === d ? "border-yellow-400 bg-yellow-500/20 text-yellow-200" : "border-zinc-700 text-zinc-300 hover:bg-zinc-800",
-                    ].join(" ")}>
-                    d{d}
-                  </button>
-                ))}
-              </div>
+            {/* Pestañas: de dónde sale el modificador de la tirada */}
+            <div className="mt-4 grid grid-cols-5 gap-1 rounded-xl border border-zinc-800 bg-zinc-950 p-1 text-[11px]">
+              {([
+                ["habilidad", "Habil."],
+                ["caracteristica", "Carac."],
+                ["salvacion", "Salv."],
+                ["ataque", "Ataque"],
+                ["personalizado", "Otro"],
+              ] as const).map(([tab, label]) => (
+                <button key={tab} type="button" onClick={() => setDiceTab(tab)}
+                  className={[
+                    "rounded-lg px-1.5 py-1.5 font-bold transition",
+                    diceTab === tab ? "bg-yellow-500 text-zinc-950" : "text-zinc-400 hover:bg-zinc-800",
+                  ].join(" ")}>
+                  {label}
+                </button>
+              ))}
             </div>
 
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              <div>
-                <label className="mb-1 block text-sm font-bold text-zinc-300">Cantidad</label>
-                <input type="number" min={1} max={20} value={diceCount} onChange={(e) => setDiceCount(Number(e.target.value))}
-                  className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white outline-none focus:border-yellow-400" />
+            {/* Habilidades (18) — modificador = característica + competencia */}
+            {diceTab === "habilidad" && (
+              <div className="mt-4 max-h-72 space-y-1.5 overflow-y-auto pr-1">
+                {skillLabels.map((skill) => {
+                  const mod = skillModifier(skill);
+                  return (
+                    <button key={skill.key} type="button" disabled={isRolling}
+                      onClick={() => rollDice({ sides: 20, count: 1, modifier: mod, label: skill.label })}
+                      className="flex w-full items-center justify-between rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-left transition hover:border-yellow-400 hover:bg-zinc-900 disabled:opacity-60">
+                      <span className="text-sm font-bold text-zinc-200">
+                        {skill.label}
+                        {sheetData.proficiencies.skills[skill.key] && <span className="ml-1.5 text-yellow-400">●</span>}
+                      </span>
+                      <span className="text-sm font-black text-yellow-300">{signed(mod)}</span>
+                    </button>
+                  );
+                })}
               </div>
-              <div>
-                <label className="mb-1 block text-sm font-bold text-zinc-300">Modificador</label>
-                <input type="number" value={diceModifier} onChange={(e) => setDiceModifier(Number(e.target.value))}
-                  className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white outline-none focus:border-yellow-400" />
-              </div>
-            </div>
+            )}
 
-            <button type="button" onClick={rollDice} disabled={isRolling}
-              className="mt-5 w-full rounded-xl bg-yellow-500 px-4 py-3 font-black text-zinc-950 transition hover:bg-yellow-400 disabled:opacity-60">
-              {isRolling ? "Tirando..." : `Tirar ${diceCount}d${diceSides}${diceModifier !== 0 ? (diceModifier > 0 ? `+${diceModifier}` : diceModifier) : ""}`}
-            </button>
+            {/* Características (6) — prueba de característica pura */}
+            {diceTab === "caracteristica" && (
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                {abilityLabels.map((ability) => {
+                  const mod = getModifier(sheetData.abilities[ability.key]);
+                  return (
+                    <button key={ability.key} type="button" disabled={isRolling}
+                      onClick={() => rollDice({ sides: 20, count: 1, modifier: mod, label: ability.label })}
+                      className="rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 transition hover:border-yellow-400 hover:bg-zinc-900 disabled:opacity-60">
+                      <p className="text-xs font-bold text-zinc-400">{ability.short}</p>
+                      <p className="text-lg font-black text-yellow-300">{signed(mod)}</p>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Salvaciones (6) — característica + competencia si aplica */}
+            {diceTab === "salvacion" && (
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                {abilityLabels.map((ability) => {
+                  const mod = saveModifier(ability.key);
+                  return (
+                    <button key={ability.key} type="button" disabled={isRolling}
+                      onClick={() => rollDice({ sides: 20, count: 1, modifier: mod, label: `Salvación de ${ability.label}` })}
+                      className="rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 transition hover:border-yellow-400 hover:bg-zinc-900 disabled:opacity-60">
+                      <p className="text-xs font-bold text-zinc-400">
+                        {ability.short}
+                        {sheetData.proficiencies.savingThrows[ability.key] && <span className="ml-1 text-yellow-400">●</span>}
+                      </p>
+                      <p className="text-lg font-black text-yellow-300">{signed(mod)}</p>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Ataques de la ficha — usa el bonif. de ataque ya calculado */}
+            {diceTab === "ataque" && (
+              <div className="mt-4 max-h-72 space-y-1.5 overflow-y-auto pr-1">
+                {sheetData.attacks.length === 0 ? (
+                  <p className="rounded-xl border border-dashed border-zinc-700 px-3 py-4 text-center text-sm text-zinc-500">
+                    Tu ficha no tiene ataques cargados.
+                  </p>
+                ) : (
+                  sheetData.attacks.map((attack, i) => {
+                    const mod = attackModifier(attack);
+                    return (
+                      <button key={`${attack.name}-${i}`} type="button" disabled={isRolling}
+                        onClick={() => rollDice({ sides: 20, count: 1, modifier: mod, label: `Ataque: ${attack.name}` })}
+                        className="flex w-full items-center justify-between rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-left transition hover:border-yellow-400 hover:bg-zinc-900 disabled:opacity-60">
+                        <span>
+                          <span className="block text-sm font-bold text-zinc-200">{attack.name}</span>
+                          <span className="block text-xs text-zinc-500">{attack.damage}</span>
+                        </span>
+                        <span className="text-sm font-black text-yellow-300">{signed(mod)}</span>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            )}
+
+            {/* Personalizado — tirada libre de cualquier dado */}
+            {diceTab === "personalizado" && (
+              <>
+                <div className="mt-4">
+                  <label className="mb-1 block text-sm font-bold text-zinc-300">Tipo de dado</label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {DICE_TYPES.map((d) => (
+                      <button key={d} type="button" onClick={() => setDiceSides(d)}
+                        className={[
+                          "rounded-xl border px-3 py-2 text-sm font-bold transition",
+                          diceSides === d ? "border-yellow-400 bg-yellow-500/20 text-yellow-200" : "border-zinc-700 text-zinc-300 hover:bg-zinc-800",
+                        ].join(" ")}>
+                        d{d}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="mt-4 grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="mb-1 block text-sm font-bold text-zinc-300">Cantidad</label>
+                    <input type="number" min={1} max={20} value={diceCount} onChange={(e) => setDiceCount(Number(e.target.value))}
+                      className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white outline-none focus:border-yellow-400" />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-bold text-zinc-300">Modificador</label>
+                    <input type="number" value={diceModifier} onChange={(e) => setDiceModifier(Number(e.target.value))}
+                      className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white outline-none focus:border-yellow-400" />
+                  </div>
+                </div>
+
+                <button type="button" onClick={() => rollDice()} disabled={isRolling}
+                  className="mt-5 w-full rounded-xl bg-yellow-500 px-4 py-3 font-black text-zinc-950 transition hover:bg-yellow-400 disabled:opacity-60">
+                  {isRolling ? "Tirando..." : `Tirar ${diceCount}d${diceSides}${diceModifier !== 0 ? (diceModifier > 0 ? `+${diceModifier}` : diceModifier) : ""}`}
+                </button>
+              </>
+            )}
 
             <button type="button" onClick={() => setIsDiceModalOpen(false)}
-              className="mt-2 w-full rounded-xl border border-zinc-700 px-4 py-2 text-sm font-semibold text-zinc-300 transition hover:bg-zinc-800">
+              className="mt-4 w-full rounded-xl border border-zinc-700 px-4 py-2 text-sm font-semibold text-zinc-300 transition hover:bg-zinc-800">
               Cerrar
             </button>
           </div>

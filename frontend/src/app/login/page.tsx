@@ -2,6 +2,7 @@
 
 import { FormEvent, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import Image from "next/image";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
@@ -70,8 +71,19 @@ export default function LoginPage() {
 }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-zinc-950 p-6 text-white">
-      <section className="w-full max-w-md rounded-3xl border border-zinc-800 bg-zinc-900 p-6 shadow-2xl">
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-zinc-950 p-6 text-white">
+      {/* Imagen de fondo */}
+      <Image
+        src="/backgrounds/Login-bg.jpg"
+        alt=""
+        fill
+        priority
+        className="object-cover opacity-100"
+      />
+      {/* Degradado oscuro para que el formulario siga siendo legible */}
+      <div className="absolute inset-0 bg-gradient-to-b from-zinc-950/30 via-zinc-950/30 to-zinc-950" />
+
+      <section className="relative z-10 w-full max-w-md rounded-3xl border border-zinc-800 bg-zinc-900/90 p-6 shadow-2xl backdrop-blur-sm">
         <p className="mb-2 text-sm font-semibold uppercase tracking-[0.3em] text-yellow-400">
           Initiative Forge
         </p>
@@ -138,9 +150,9 @@ export default function LoginPage() {
         </form>
 
         <div className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950 p-4 text-sm text-zinc-400">
-          <p className="font-semibold text-zinc-200">Usuario demo:</p>
-          <p>dm@forge.local</p>
-          <p>forge1234</p>
+          <p className="font-semibold text-zinc-200">Todos los ususarios son bienvenidos:</p>
+          <p>Gracias por apoyarme chicos</p>
+          <p>Los quiero</p>
         </div>
 
         <p className="mt-4 text-center text-sm text-zinc-500">
