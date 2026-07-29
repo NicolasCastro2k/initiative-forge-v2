@@ -103,13 +103,22 @@ playerRouter.get("/games/:gameId/dice/log", async (req, res) => {
 });
 
 // ─── POST /games/:gameId/dice/roll ─────────────────────────────────────────────
-// Body: { sides: 4|6|8|10|12|20|100, count: number, modifier?: number, characterName?: string, label?: string }
+// Body: { sides, count, modifier?, characterName?, label?, mode? }
 // `label` es opcional y viene de la Pantalla de Jugador cuando la tirada se
 // origina en una característica/habilidad/salvación/ataque de la ficha
 // (p.ej. "Percepción", "Salvación de Destreza", "Ataque: Espada larga").
 // Solo se usa para mostrar de dónde salió el modificador; no afecta el cálculo.
+//
+// `mode` puede ser "normal" | "advantage" | "disadvantage". Solo tiene efecto
+// sobre d20 (regla de D&D 5e): se tiran dos juegos de dados completos y se
+// conserva el de mayor suma (ventaja) o menor suma (desventaja); el modificador
+// se aplica una sola vez, después de elegir. Como se compara antes de sumar el
+// modificador, el resultado natural (1 o 20) del dado elegido nunca se ve
+// alterado por él.
 
 const ALLOWED_SIDES = [4, 6, 8, 10, 12, 20, 100];
+const ALLOWED_MODES = ["normal", "advantage", "disadvantage"] as const;
+type RollMode = (typeof ALLOWED_MODES)[number];
 
 playerRouter.post("/games/:gameId/dice/roll", async (req, res) => {
   try {
@@ -123,20 +132,40 @@ playerRouter.post("/games/:gameId/dice/roll", async (req, res) => {
     const sides = Number(req.body.sides);
     const count = Math.min(Math.max(Number(req.body.count) || 1, 1), 20);
     const modifier = Number(req.body.modifier) || 0;
+    const modeRaw = String(req.body.mode ?? "normal");
+    const mode: RollMode = (ALLOWED_MODES as readonly string[]).includes(modeRaw) ? (modeRaw as RollMode) : "normal";
 
     if (!ALLOWED_SIDES.includes(sides)) {
       return res.status(400).json({ message: "Tipo de dado inválido." });
     }
 
-    const rolls: number[] = [];
-    for (let i = 0; i < count; i++) {
-      rolls.push(Math.floor(Math.random() * sides) + 1);
+    function rollSet(): number[] {
+      const set: number[] = [];
+      for (let i = 0; i < count; i++) set.push(Math.floor(Math.random() * sides) + 1);
+      return set;
+    }
+
+    let rolls: number[];
+    let discarded: number[] | null = null;
+
+    if (mode !== "normal" && sides === 20) {
+      const setA = rollSet();
+      const setB = rollSet();
+      const sumA = setA.reduce((s, r) => s + r, 0);
+      const sumB = setB.reduce((s, r) => s + r, 0);
+      const keepA = mode === "advantage" ? sumA >= sumB : sumA <= sumB;
+      rolls = keepA ? setA : setB;
+      discarded = keepA ? setB : setA;
+    } else {
+      rolls = rollSet();
     }
 
     const total = rolls.reduce((sum, r) => sum + r, 0) + modifier;
     const modText = modifier !== 0 ? (modifier > 0 ? `+${modifier}` : `${modifier}`) : "";
     const label = req.body.label ? String(req.body.label).slice(0, 60) : "";
-    const expression = `${label ? `${label} · ` : ""}${count}d${sides}${modText}`;
+    const modeText = mode === "advantage" ? " (ventaja)" : mode === "disadvantage" ? " (desventaja)" : "";
+    const discardedText = discarded ? ` · descartado [${discarded.join(", ")}]` : "";
+    const expression = `${label ? `${label} · ` : ""}${count}d${sides}${modText}${modeText}${discardedText}`;
 
     const characterName = req.body.characterName ? String(req.body.characterName) : user.name;
 
