@@ -1,9 +1,14 @@
+// Va en: frontend/src/app/games/[gameId]/player/page.tsx
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { io, Socket } from "socket.io-client";
 import { AbilityKey, abilityLabels, skillLabels, getModifier, signed } from "@/utils/dnd5e";
+import {
+  BeastPreset, DRUID_CLASS_ID, MOON_DRUID_SUBCLASS_ID, WILD_SHAPE_USES_MAX,
+  isBeastEligible, describeBeastSpeed, primaryBeastSpeed,
+} from "@/utils/wildshape";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
@@ -34,12 +39,30 @@ type SheetData = {
     slots: Record<string, { total: number; expended: number }>;
     spellsByLevel: Record<string, string[]>;
   };
+  wildShape: {
+    active: boolean;
+    beastId: string | null;
+    beastName: string;
+    usesRemaining: number;
+    usesMax: number;
+    saved: {
+      armorClass: number;
+      speed: number;
+      maxHp: number;
+      currentHp: number;
+      temporaryHp: number;
+      attacks: Attack[];
+      tokenImagePath: string | null;
+    } | null;
+  };
 };
 
 type Character = {
   id: string;
   name: string;
   level: number;
+  classId: string | null;
+  subclassId: string | null;
   tokenImagePath: string | null;
   portraitImagePath: string | null;
   sheetData: unknown;
@@ -95,6 +118,7 @@ function getDefaultSheetData(): SheetData {
       slots: Object.fromEntries(Array.from({ length: 9 }, (_, i) => [String(i + 1), { total: 0, expended: 0 }])),
       spellsByLevel: Object.fromEntries(Array.from({ length: 10 }, (_, i) => [String(i), []])),
     },
+    wildShape: { active: false, beastId: null, beastName: "", usesRemaining: 2, usesMax: 2, saved: null },
   };
 }
 
@@ -125,6 +149,11 @@ function normalizeSheetData(raw: unknown): SheetData {
         ((r.spells as Record<string, unknown> | undefined)?.spellsByLevel as SheetData["spells"]["spellsByLevel"]) ??
         defaults.spells.spellsByLevel,
     },
+    wildShape: {
+      ...defaults.wildShape,
+      ...((r.wildShape ?? {}) as object),
+      saved: ((r.wildShape as Record<string, unknown> | undefined)?.saved as SheetData["wildShape"]["saved"]) ?? null,
+    },
   };
 }
 
@@ -138,6 +167,7 @@ export default function PlayerScreenPage() {
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [game, setGame] = useState<GameDetail | null>(null);
   const [selection, setSelection] = useState<GameCharacterSelection | null>(null);
+  const [beasts, setBeasts] = useState<BeastPreset[]>([]);
   const [sheetData, setSheetData] = useState<SheetData>(getDefaultSheetData());
 
   const [journal, setJournal] = useState("");
@@ -147,10 +177,12 @@ export default function PlayerScreenPage() {
   const [diceLog, setDiceLog] = useState<DiceRoll[]>([]);
   const [isDiceModalOpen, setIsDiceModalOpen] = useState(false);
   const [diceTab, setDiceTab] = useState<"personalizado" | "caracteristica" | "habilidad" | "salvacion" | "ataque">("habilidad");
+  const [diceMode, setDiceMode] = useState<"normal" | "advantage" | "disadvantage">("normal");
   const [diceSides, setDiceSides] = useState(20);
   const [diceCount, setDiceCount] = useState(1);
   const [diceModifier, setDiceModifier] = useState(0);
   const [isRolling, setIsRolling] = useState(false);
+  const [rollOverlay, setRollOverlay] = useState<{ phase: "loading" | "result"; roll?: DiceRoll } | null>(null);
 
   const [isShopOpen, setIsShopOpen] = useState(false);
   const [inventoryTab, setInventoryTab] = useState<InventoryTab>("todos");
@@ -172,12 +204,13 @@ export default function PlayerScreenPage() {
     setError("");
 
     try {
-      const [meRes, gameRes, charsRes, journalRes, diceRes] = await Promise.all([
+      const [meRes, gameRes, charsRes, journalRes, diceRes, beastsRes] = await Promise.all([
         fetch(`${API_URL}/auth/me`, { credentials: "include" }),
         fetch(`${API_URL}/games/${gameId}`, { credentials: "include" }),
         fetch(`${API_URL}/games/${gameId}/characters`, { credentials: "include" }),
         fetch(`${API_URL}/games/${gameId}/journal`, { credentials: "include" }),
         fetch(`${API_URL}/games/${gameId}/dice/log`, { credentials: "include" }),
+        fetch(`${API_URL}/presets/beasts`, { credentials: "include" }),
       ]);
 
       if (meRes.status === 401) {
@@ -185,12 +218,13 @@ export default function PlayerScreenPage() {
         return;
       }
 
-      const [meData, gameData, charsData, journalData, diceData] = await Promise.all([
+      const [meData, gameData, charsData, journalData, diceData, beastsData] = await Promise.all([
         meRes.json().catch(() => null),
         gameRes.json().catch(() => null),
         charsRes.json().catch(() => null),
         journalRes.json().catch(() => null),
         diceRes.json().catch(() => null),
+        beastsRes.json().catch(() => null),
       ]);
 
       if (!meRes.ok || !meData?.user) { setError("No se pudo cargar tu sesión."); return; }
@@ -208,6 +242,7 @@ export default function PlayerScreenPage() {
       }
 
       setJournal(journalData?.journal ?? "");
+      setBeasts((beastsData?.beasts ?? []) as BeastPreset[]);
       setDiceLog((diceData?.rolls ?? []) as DiceRoll[]);
     } catch {
       setError("No se pudo conectar con el backend.");
@@ -217,6 +252,13 @@ export default function PlayerScreenPage() {
   }
 
   // ─── Socket — registro de dados en tiempo real ─────────────────────────────
+  // Ref (no state) para que el listener de socket siempre lea el characterId
+  // actual sin tener que reconectar el socket cada vez que `selection` cambia.
+  const selectionCharacterIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    selectionCharacterIdRef.current = selection?.character.id ?? null;
+  }, [selection]);
+
   useEffect(() => {
     if (!game || !gameId) return;
 
@@ -228,6 +270,18 @@ export default function PlayerScreenPage() {
       setDiceLog((current) => [payload.roll, ...current].slice(0, 50));
     });
 
+    // Si el DM (o cualquiera) cambia CA/PG/velocidad de tu combatiente desde
+    // el tablero de combate, reflejarlo aquí — así, si luego tocas +1/-1 PG
+    // desde tu pantalla, no pisas ese cambio con datos viejos.
+    socket.on("combat:updated", (payload: { encounter: { combatants: { characterId: string | null; ac: number; hp: number; maxHp: number; speed: number }[] } | null }) => {
+      const myCombatant = payload.encounter?.combatants.find((c) => c.characterId === selectionCharacterIdRef.current);
+      if (!myCombatant) return;
+      setSheetData((prev) => ({
+        ...prev,
+        combat: { ...prev.combat, armorClass: myCombatant.ac, maxHp: myCombatant.maxHp, currentHp: myCombatant.hp, speed: myCombatant.speed },
+      }));
+    });
+
     return () => {
       socket.emit("leave:game", gameId);
       socket.disconnect();
@@ -235,19 +289,31 @@ export default function PlayerScreenPage() {
   }, [game, gameId]);
 
   // ─── Guardar ficha (HP, moneda) ─────────────────────────────────────────────
-  async function saveSheetPatch(patch: Partial<SheetData>, savingFlag: (v: boolean) => void) {
+  async function saveSheetPatch(
+    patch: Partial<SheetData>,
+    savingFlag: (v: boolean) => void,
+    tokenImagePath?: string | null,
+    syncCombatant?: boolean,
+  ) {
     if (!selection) return;
     savingFlag(true);
 
     const newSheetData = { ...sheetData, ...patch };
     setSheetData(newSheetData);
+    if (tokenImagePath !== undefined) {
+      setSelection((current) => (current ? { ...current, character: { ...current.character, tokenImagePath } } : current));
+    }
 
     try {
       await fetch(`${API_URL}/characters/${selection.character.id}`, {
         method: "PUT",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sheetData: newSheetData }),
+        body: JSON.stringify({
+          sheetData: newSheetData,
+          ...(tokenImagePath !== undefined ? { tokenImagePath } : {}),
+          ...(syncCombatant ? { syncCombatant: true } : {}),
+        }),
       });
     } catch {
       setError("No se pudo guardar el cambio.");
@@ -257,13 +323,79 @@ export default function PlayerScreenPage() {
   }
 
   function updateHp(delta: number) {
-    const newHp = Math.max(0, Math.min(sheetData.combat.maxHp, sheetData.combat.currentHp + delta));
-    saveSheetPatch({ combat: { ...sheetData.combat, currentHp: newHp } }, setIsSavingHp);
+    const rawHp = sheetData.combat.currentHp + delta;
+    if (sheetData.wildShape.active && rawHp <= 0) {
+      revertWildShape(Math.abs(Math.min(0, rawHp)));
+      return;
+    }
+    const newHp = Math.max(0, Math.min(sheetData.combat.maxHp, rawHp));
+    saveSheetPatch({ combat: { ...sheetData.combat, currentHp: newHp } }, setIsSavingHp, undefined, true);
   }
 
   function setHpDirect(value: number) {
+    if (sheetData.wildShape.active && value <= 0) {
+      revertWildShape(Math.abs(value));
+      return;
+    }
     const clamped = Math.max(0, Math.min(sheetData.combat.maxHp, value));
-    saveSheetPatch({ combat: { ...sheetData.combat, currentHp: clamped } }, setIsSavingHp);
+    saveSheetPatch({ combat: { ...sheetData.combat, currentHp: clamped } }, setIsSavingHp, undefined, true);
+  }
+
+  // ─── Forma Salvaje ──────────────────────────────────────────────────────────
+  const isDruid = selection?.character.classId === DRUID_CLASS_ID;
+  const isMoonDruid = selection?.character.subclassId === MOON_DRUID_SUBCLASS_ID;
+  const eligibleBeasts = useMemo(() => {
+    if (!isDruid) return [];
+    return beasts
+      .filter((b) => isBeastEligible(b, sheetData.identity.level, isMoonDruid))
+      .sort((a, b) => a.cr - b.cr || a.name.localeCompare(b.name));
+  }, [beasts, isDruid, isMoonDruid, sheetData.identity.level]);
+
+  function transformInto(beast: BeastPreset) {
+    if (sheetData.wildShape.usesRemaining <= 0 && !sheetData.wildShape.active) return;
+
+    const spendUse = !sheetData.wildShape.active;
+    const saved = sheetData.wildShape.saved ?? {
+      armorClass: sheetData.combat.armorClass,
+      speed: sheetData.combat.speed,
+      maxHp: sheetData.combat.maxHp,
+      currentHp: sheetData.combat.currentHp,
+      temporaryHp: sheetData.combat.temporaryHp,
+      attacks: sheetData.attacks,
+      tokenImagePath: selection?.character.tokenImagePath ?? null,
+    };
+
+    saveSheetPatch({
+      combat: { ...sheetData.combat, armorClass: beast.ac, speed: primaryBeastSpeed(beast), maxHp: beast.hp, currentHp: beast.hp, temporaryHp: 0 },
+      attacks: beast.attacks,
+      wildShape: {
+        ...sheetData.wildShape,
+        active: true,
+        beastId: beast.id,
+        beastName: beast.name,
+        usesRemaining: spendUse ? Math.max(0, sheetData.wildShape.usesRemaining - 1) : sheetData.wildShape.usesRemaining,
+        saved,
+      },
+    }, () => {}, beast.tokenImagePath ?? null, true);
+  }
+
+  // excessDamage: si la reversión ocurre porque los PG de la bestia llegaron
+  // a 0, el daño sobrante pasa al personaje (regla de 5e).
+  function revertWildShape(excessDamage = 0) {
+    const saved = sheetData.wildShape.saved;
+    if (!saved) {
+      saveSheetPatch({ wildShape: { ...sheetData.wildShape, active: false, beastId: null, beastName: "" } }, () => {}, undefined, true);
+      return;
+    }
+    saveSheetPatch({
+      combat: { ...sheetData.combat, armorClass: saved.armorClass, speed: saved.speed, maxHp: saved.maxHp, currentHp: Math.max(0, saved.currentHp - excessDamage), temporaryHp: saved.temporaryHp },
+      attacks: saved.attacks,
+      wildShape: { ...sheetData.wildShape, active: false, beastId: null, beastName: "", saved: null },
+    }, () => {}, saved.tokenImagePath, true);
+  }
+
+  function restoreWildShapeUses() {
+    saveSheetPatch({ wildShape: { ...sheetData.wildShape, usesRemaining: sheetData.wildShape.usesMax } }, () => {});
   }
 
   function updateCurrency(coin: keyof SheetData["currency"], value: number) {
@@ -303,15 +435,28 @@ export default function PlayerScreenPage() {
   // salvación/ataque), se usan esos valores en vez de los del formulario
   // "Personalizado". El modificador se calcula siempre a partir de la ficha
   // del personaje (sheetData.abilities / proficiencies), nunca a mano.
-  async function rollDice(opts?: { sides: number; count: number; modifier: number; label?: string }) {
+  // El modo (normal/ventaja/desventaja) se toma de `diceMode` salvo que se
+  // pase explícito en opts.
+  async function rollDice(opts?: {
+    sides: number;
+    count: number;
+    modifier: number;
+    label?: string;
+    mode?: "normal" | "advantage" | "disadvantage";
+  }) {
     if (!gameId) return;
-    setIsRolling(true);
-    setError("");
 
     const sides = opts?.sides ?? diceSides;
     const count = opts?.count ?? diceCount;
     const modifier = opts?.modifier ?? diceModifier;
     const label = opts?.label;
+    const mode = opts?.mode ?? diceMode;
+
+    // Cerramos el modal de inmediato y mostramos el gif de "calculando".
+    setIsDiceModalOpen(false);
+    setRollOverlay({ phase: "loading" });
+    setIsRolling(true);
+    setError("");
 
     try {
       const response = await fetch(`${API_URL}/games/${gameId}/dice/roll`, {
@@ -323,22 +468,34 @@ export default function PlayerScreenPage() {
           count,
           modifier,
           label,
+          mode,
           characterName: sheetData.identity.characterName || currentUser?.name,
         }),
       });
       const data = await response.json().catch(() => null);
       if (!response.ok) {
         setError(data?.message ?? "No se pudo tirar los dados.");
+        setRollOverlay(null);
         return;
       }
+      const roll = data.roll as DiceRoll;
       // El propio socket también nos notificará, pero agregamos de inmediato
       // para que se sienta instantáneo sin esperar el round-trip del socket.
       setDiceLog((current) => {
-        if (current.some((r) => r.id === data.roll.id)) return current;
-        return [data.roll as DiceRoll, ...current].slice(0, 50);
+        if (current.some((r) => r.id === roll.id)) return current;
+        return [roll, ...current].slice(0, 50);
       });
+
+      // Deja el gif visible un momento antes de mostrar el resultado, para
+      // que se note la animación en vez de saltar directo al número.
+      await new Promise((resolve) => setTimeout(resolve, 900));
+      setRollOverlay({ phase: "result", roll });
+      setTimeout(() => {
+        setRollOverlay((current) => (current?.roll?.id === roll.id ? null : current));
+      }, 4000);
     } catch {
       setError("No se pudo conectar con el backend.");
+      setRollOverlay(null);
     } finally {
       setIsRolling(false);
     }
@@ -502,6 +659,49 @@ export default function PlayerScreenPage() {
                 </div>
               </div>
 
+              {/* Forma Salvaje — solo druidas */}
+              {isDruid && (
+                <div className="mt-4 rounded-2xl border border-zinc-800 bg-zinc-950 p-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-bold text-zinc-300">🐾 Forma Salvaje</p>
+                    <span className="rounded-full border border-zinc-700 px-2.5 py-0.5 text-xs font-bold text-zinc-400">
+                      Usos: {sheetData.wildShape.usesRemaining}/{WILD_SHAPE_USES_MAX}
+                    </span>
+                  </div>
+
+                  {sheetData.wildShape.active ? (
+                    <div className="mt-2">
+                      <p className="font-black text-yellow-300">{sheetData.wildShape.beastName}</p>
+                      <button type="button" onClick={() => revertWildShape(0)}
+                        className="mt-2 w-full rounded-xl bg-yellow-500 px-3 py-2 text-sm font-black text-zinc-950 transition hover:bg-yellow-400">
+                        Revertir forma
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="mt-2 max-h-40 space-y-1 overflow-y-auto pr-1">
+                        {eligibleBeasts.length === 0 ? (
+                          <p className="py-2 text-center text-xs text-zinc-500">Sin bestias disponibles a tu nivel.</p>
+                        ) : (
+                          eligibleBeasts.map((beast) => (
+                            <button key={beast.id} type="button" disabled={sheetData.wildShape.usesRemaining <= 0}
+                              onClick={() => transformInto(beast)}
+                              className="flex w-full items-center justify-between rounded-lg border border-zinc-800 px-2.5 py-1.5 text-left text-xs transition hover:border-yellow-400 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-50">
+                              <span className="font-bold text-zinc-200">{beast.name}</span>
+                              <span className="text-zinc-500">CR {beast.crLabel} · CA {beast.ac} · PG {beast.hp}</span>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                      <button type="button" onClick={restoreWildShapeUses}
+                        className="mt-2 w-full rounded-lg border border-zinc-700 px-3 py-1.5 text-xs font-semibold text-zinc-300 transition hover:bg-zinc-800">
+                        Restaurar usos (descanso)
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
+
               <a href={`/characters/${selection.character.id}`} target="_blank" rel="noreferrer"
                 className="mt-4 block rounded-xl border border-zinc-700 px-4 py-2 text-center text-sm font-bold text-zinc-200 transition hover:bg-zinc-800">
                 Ver ficha completa
@@ -659,6 +859,38 @@ export default function PlayerScreenPage() {
               ))}
             </div>
 
+            {/* Ventaja / Desventaja — aplica a las tiradas de d20 (todas las
+                pestañas automáticas usan d20; en "Otro" solo tiene efecto si
+                el dado elegido es d20). Se tiran dos veces y se conserva el
+                mejor resultado (ventaja) o el peor (desventaja); el 1 y el 20
+                naturales del dado elegido no se ven afectados por esto. */}
+            <div className="mt-3 grid grid-cols-3 gap-1 rounded-xl border border-zinc-800 bg-zinc-950 p-1 text-xs">
+              {([
+                ["normal", "Normal"],
+                ["advantage", "Ventaja"],
+                ["disadvantage", "Desventaja"],
+              ] as const).map(([mode, label]) => (
+                <button key={mode} type="button" onClick={() => setDiceMode(mode)}
+                  className={[
+                    "rounded-lg px-2 py-1.5 font-bold transition",
+                    diceMode === mode
+                      ? mode === "advantage"
+                        ? "bg-green-500 text-zinc-950"
+                        : mode === "disadvantage"
+                          ? "bg-red-500 text-zinc-950"
+                          : "bg-zinc-700 text-white"
+                      : "text-zinc-400 hover:bg-zinc-800",
+                  ].join(" ")}>
+                  {label}
+                </button>
+              ))}
+            </div>
+            {diceTab === "personalizado" && diceSides !== 20 && diceMode !== "normal" && (
+              <p className="mt-1 text-[11px] text-zinc-500">
+                Ventaja/desventaja solo aplica a d20 — con d{diceSides} se ignorará.
+              </p>
+            )}
+
             {/* Habilidades (18) — modificador = característica + competencia */}
             {diceTab === "habilidad" && (
               <div className="mt-4 max-h-72 space-y-1.5 overflow-y-auto pr-1">
@@ -801,6 +1033,49 @@ export default function PlayerScreenPage() {
               className="mt-4 w-full rounded-xl border border-zinc-700 px-4 py-2 text-sm font-semibold text-zinc-300 transition hover:bg-zinc-800">
               Cerrar
             </button>
+          </div>
+        </div>
+      )}
+      {/* ─── Overlay: tirando / resultado ──────────────────────────────────────
+          Se abre justo cuando se cierra el modal de "Lanzar dados". Primero
+          muestra el gif de carga (frontend/public/dice-loading.gif) y, al
+          terminar, el mismo cuadro cambia al resultado de la tirada. */}
+      {rollOverlay && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4"
+          onClick={() => rollOverlay.phase === "result" && setRollOverlay(null)}>
+          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-xs rounded-3xl border border-zinc-800 bg-zinc-900 p-6 text-center shadow-2xl">
+            {rollOverlay.phase === "loading" || !rollOverlay.roll ? (
+              <>
+                {/* Coloca aquí tu gif en frontend/public/dice-loading.gif */}
+                <img src="/dice-loading.gif" alt="Tirando dados..." className="mx-auto h-32 w-32 object-contain" />
+                <p className="mt-4 font-bold text-zinc-300">Tirando dados...</p>
+              </>
+            ) : (
+              (() => {
+                const roll = rollOverlay.roll;
+                const isNat20 = roll.rolls.length === 1 && roll.rolls[0] === 20;
+                const isNat1 = roll.rolls.length === 1 && roll.rolls[0] === 1;
+                return (
+                  <>
+                    <p className="text-xs font-bold uppercase tracking-wide text-zinc-500">{roll.characterName}</p>
+                    <p className="mt-1 text-xs text-zinc-500">{roll.expression}</p>
+                    <p className={[
+                      "mt-3 text-6xl font-black",
+                      isNat20 ? "text-green-400" : isNat1 ? "text-red-400" : "text-yellow-300",
+                    ].join(" ")}>
+                      {roll.total}
+                    </p>
+                    {isNat20 && <p className="mt-1 text-sm font-black text-green-400">¡20 natural!</p>}
+                    {isNat1 && <p className="mt-1 text-sm font-black text-red-400">1 natural...</p>}
+                    <p className="mt-2 text-xs text-zinc-500">[{roll.rolls.join(", ")}]</p>
+                    <button type="button" onClick={() => setRollOverlay(null)}
+                      className="mt-4 w-full rounded-xl border border-zinc-700 px-4 py-2 text-sm font-semibold text-zinc-300 transition hover:bg-zinc-800">
+                      Cerrar
+                    </button>
+                  </>
+                );
+              })()
+            )}
           </div>
         </div>
       )}

@@ -459,6 +459,7 @@ model BeastPreset {
   multiattack          Boolean  @default(false)
   minDruidLevel        Int? // nivel mínimo para druida estándar (null = no disponible)
   minMoonDruidLevel    Int? // nivel mínimo para Círculo de la Luna (null = no disponible)
+  tokenImagePath       String? // imagen que reemplaza el token del personaje en el mapa de combate mientras está transformado
   source               String   @default("SRD")
   isSrd                Boolean  @default(true)
   createdAt            DateTime @default(now())

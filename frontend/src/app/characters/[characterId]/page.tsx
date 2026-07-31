@@ -1,7 +1,12 @@
+// Va en: frontend/src/app/characters/[characterId]/page.tsx
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
+import {
+  BeastPreset, DRUID_CLASS_ID, MOON_DRUID_SUBCLASS_ID, WILD_SHAPE_USES_MAX,
+  isBeastEligible, describeBeastSpeed, primaryBeastSpeed,
+} from "@/utils/wildshape";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
@@ -49,6 +54,7 @@ type EquipmentItem = { quantity: number; name: string };
 type FeatureItem = { name: string; description: string };
 
 type SheetData = {
+  meta: { locked: boolean };
   identity: {
     playerName: string;
     characterName: string;
@@ -94,6 +100,27 @@ type SheetData = {
     spellAttackBonus: number;
     slots: Record<string, { total: number; expended: number }>;
     spellsByLevel: Record<string, string[]>;
+  };
+  wildShape: {
+    active: boolean;
+    beastId: string | null;
+    beastName: string;
+    usesRemaining: number;
+    usesMax: number;
+    // Estadísticas del personaje ANTES de transformarse, para poder
+    // restaurarlas al revertir. Solo se guardan la primera vez (si ya hay
+    // algo guardado y cambias de bestia sin revertir, no se pisa).
+    saved: {
+      armorClass: number;
+      speed: number;
+      maxHp: number;
+      currentHp: number;
+      temporaryHp: number;
+      hitDiceTotal: string;
+      hitDiceCurrent: string;
+      attacks: Attack[];
+      tokenImagePath: string | null;
+    } | null;
   };
 };
 
@@ -149,6 +176,7 @@ type BackgroundPreset = {
 
 function getDefaultSheetData(characterName: string): SheetData {
   return {
+    meta: { locked: false },
     identity: {
       playerName: "", characterName, className: "", subclassName: "",
       level: 1, background: "", race: "", alignment: "", experience: 0,
@@ -184,6 +212,7 @@ function getDefaultSheetData(characterName: string): SheetData {
       slots: Object.fromEntries(Array.from({ length: 9 }, (_, i) => [String(i + 1), { total: 0, expended: 0 }])),
       spellsByLevel: Object.fromEntries(Array.from({ length: 10 }, (_, i) => [String(i), []])),
     },
+    wildShape: { active: false, beastId: null, beastName: "", usesRemaining: 2, usesMax: 2, saved: null },
   };
 }
 
@@ -212,8 +241,10 @@ function normalizeSheetData(value: unknown, characterName: string): SheetData {
   }
 
   const rawProf = (raw.proficiencies ?? {}) as Record<string, unknown>;
+  const rawWildShape = (raw.wildShape ?? {}) as Record<string, unknown>;
 
   return {
+    meta: { ...defaults.meta, ...((raw.meta ?? {}) as object) },
     identity: { ...defaults.identity, ...((raw.identity ?? {}) as object) },
     abilities: { ...defaults.abilities, ...((raw.abilities ?? {}) as object) },
     combat: { ...defaults.combat, ...((raw.combat ?? {}) as object) },
@@ -237,6 +268,11 @@ function normalizeSheetData(value: unknown, characterName: string): SheetData {
       ...rawSpells,
       slots: (rawSpells.slots as Record<string, { total: number; expended: number }>) ?? defaults.spells.slots,
       spellsByLevel,
+    },
+    wildShape: {
+      ...defaults.wildShape,
+      ...rawWildShape,
+      saved: (rawWildShape.saved as SheetData["wildShape"]["saved"]) ?? null,
     },
   };
 }
@@ -371,10 +407,12 @@ export default function CharacterSheetPage() {
 
   const [character, setCharacter] = useState<Character | null>(null);
   const [sheetData, setSheetData] = useState<SheetData>(getDefaultSheetData(""));
+  const isLocked = sheetData.meta.locked;
   const [classes, setClasses] = useState<ClassPreset[]>([]);
   const [races, setRaces] = useState<RacePreset[]>([]);
   const [backgrounds, setBackgrounds] = useState<BackgroundPreset[]>([]);
   const [weapons, setWeapons] = useState<WeaponPreset[]>([]);
+  const [beasts, setBeasts] = useState<BeastPreset[]>([]);
   const [spellCatalog, setSpellCatalog] = useState<SpellPreset[]>([]);
   const [spellLevelFilter, setSpellLevelFilter] = useState<string>("all");
   const [selectedWeaponCatalogId, setSelectedWeaponCatalogId] = useState("");
@@ -529,13 +567,14 @@ export default function CharacterSheetPage() {
     setError("");
 
     try {
-      const [charRes, classesRes, racesRes, backgroundsRes, weaponsRes, spellsRes] = await Promise.all([
+      const [charRes, classesRes, racesRes, backgroundsRes, weaponsRes, spellsRes, beastsRes] = await Promise.all([
         fetch(`${API_URL}/characters/${characterId}`, { credentials: "include" }),
         fetch(`${API_URL}/presets/classes`, { credentials: "include" }),
         fetch(`${API_URL}/presets/races`, { credentials: "include" }),
         fetch(`${API_URL}/presets/backgrounds`, { credentials: "include" }),
         fetch(`${API_URL}/presets/weapons`, { credentials: "include" }),
         fetch(`${API_URL}/presets/spells`, { credentials: "include" }),
+        fetch(`${API_URL}/presets/beasts`, { credentials: "include" }),
       ]);
 
       if (charRes.status === 401) {
@@ -543,13 +582,14 @@ export default function CharacterSheetPage() {
         return;
       }
 
-      const [charData, classesData, racesData, backgroundsData, weaponsData, spellsData] = await Promise.all([
+      const [charData, classesData, racesData, backgroundsData, weaponsData, spellsData, beastsData] = await Promise.all([
         charRes.json().catch(() => null),
         classesRes.json().catch(() => null),
         racesRes.json().catch(() => null),
         backgroundsRes.json().catch(() => null),
         weaponsRes.json().catch(() => null),
         spellsRes.json().catch(() => null),
+        beastsRes.json().catch(() => null),
       ]);
 
       if (!charRes.ok || !charData?.character) {
@@ -570,6 +610,7 @@ export default function CharacterSheetPage() {
       setBackgrounds((backgroundsData?.backgrounds ?? []) as BackgroundPreset[]);
       setWeapons((weaponsData?.weapons ?? []) as WeaponPreset[]);
       setSpellCatalog((spellsData?.spells ?? []) as SpellPreset[]);
+      setBeasts((beastsData?.beasts ?? []) as BeastPreset[]);
     } catch {
       setError("No se pudo conectar con el backend.");
     } finally {
@@ -720,14 +761,40 @@ export default function CharacterSheetPage() {
 
   // Cuando cambia el trasfondo, agregar las competencias en habilidades
   function handleBackgroundChange(backgroundId: string) {
-    setSelectedBackgroundId(backgroundId);
-    const bg = backgrounds.find((b) => b.id === backgroundId);
-    if (!bg) return;
+    // Capturamos el trasfondo anterior ANTES de actualizar el estado, para
+    // poder destildar sus habilidades y que no queden "colgadas" si se
+    // cambia a otro trasfondo (o se deselecciona).
+    const previousBg = backgrounds.find((b) => b.id === selectedBackgroundId) ?? null;
+    const bg = backgrounds.find((b) => b.id === backgroundId) ?? null;
 
-    setSheetData((prev) => ({
-      ...prev,
-      identity: { ...prev.identity, background: bg.name },
-    }));
+    setSelectedBackgroundId(backgroundId);
+
+    setSheetData((prev) => {
+      const newSkills = { ...prev.proficiencies.skills };
+
+      // 1. Destildar las habilidades que otorgaba el trasfondo anterior
+      //    (si había uno), a menos que el trasfondo nuevo también las otorgue.
+      const newKeys = new Set(
+        (bg?.skillProficiencies ?? []).map((s) => matchSkillKey(s)).filter((k): k is string => Boolean(k))
+      );
+      if (previousBg) {
+        previousBg.skillProficiencies.forEach((s) => {
+          const key = matchSkillKey(s);
+          if (key && !newKeys.has(key)) newSkills[key] = false;
+        });
+      }
+
+      // 2. Tildar las habilidades del trasfondo nuevo. A diferencia de las
+      //    habilidades de clase (que el jugador elige), las de trasfondo son
+      //    fijas en D&D 5e, así que se marcan automáticamente.
+      newKeys.forEach((key) => { newSkills[key] = true; });
+
+      return {
+        ...prev,
+        identity: { ...prev.identity, background: bg?.name ?? "" },
+        proficiencies: { ...prev.proficiencies, skills: newSkills },
+      };
+    });
   }
 
   function handleSubclassChange(subclassId: string) {
@@ -741,6 +808,127 @@ export default function CharacterSheetPage() {
 
   function update(nextSheetData: SheetData) { setSheetData(nextSheetData); }
 
+  // ─── Forma Salvaje ──────────────────────────────────────────────────────────
+  const isDruid = selectedClassId === DRUID_CLASS_ID;
+  const isMoonDruid = selectedSubclassId === MOON_DRUID_SUBCLASS_ID;
+  const eligibleBeasts = useMemo(() => {
+    if (!isDruid) return [];
+    return beasts
+      .filter((b) => isBeastEligible(b, sheetData.identity.level, isMoonDruid))
+      .sort((a, b) => a.cr - b.cr || a.name.localeCompare(b.name));
+  }, [beasts, isDruid, isMoonDruid, sheetData.identity.level]);
+
+  // Guarda sheetData + (opcionalmente) el token del personaje con una
+  // petición liviana — NO usa saveCharacter() porque esa función bloquea
+  // clase/raza/atributos/habilidades en el primer guardado, y transformarse
+  // no debería disparar ese bloqueo.
+  async function persistWildShape(nextSheetData: SheetData, tokenImagePath?: string | null) {
+    if (!characterId) return;
+    setSheetData(nextSheetData);
+    try {
+      const response = await fetch(`${API_URL}/characters/${characterId}`, {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sheetData: nextSheetData,
+          syncCombatant: true,
+          ...(tokenImagePath !== undefined ? { tokenImagePath } : {}),
+        }),
+      });
+      const data = await response.json().catch(() => null);
+      if (response.ok && data?.character) {
+        setCharacter(data.character as Character);
+      }
+    } catch {
+      setError("No se pudo conectar con el backend.");
+    }
+  }
+
+  function transformInto(beast: BeastPreset) {
+    if (sheetData.wildShape.usesRemaining <= 0 && !sheetData.wildShape.active) return;
+
+    // Si ya estaba transformado, no se gasta un uso extra por cambiar de
+    // bestia (regla de 5e); solo se gasta al pasar de forma normal a bestia.
+    const spendUse = !sheetData.wildShape.active;
+    const saved = sheetData.wildShape.saved ?? {
+      armorClass: sheetData.combat.armorClass,
+      speed: sheetData.combat.speed,
+      maxHp: sheetData.combat.maxHp,
+      currentHp: sheetData.combat.currentHp,
+      temporaryHp: sheetData.combat.temporaryHp,
+      hitDiceTotal: sheetData.combat.hitDiceTotal,
+      hitDiceCurrent: sheetData.combat.hitDiceCurrent,
+      attacks: sheetData.attacks,
+      tokenImagePath: character?.tokenImagePath ?? null,
+    };
+
+    const next: SheetData = {
+      ...sheetData,
+      combat: {
+        ...sheetData.combat,
+        armorClass: beast.ac,
+        speed: primaryBeastSpeed(beast),
+        maxHp: beast.hp,
+        currentHp: beast.hp,
+        temporaryHp: 0,
+        hitDiceTotal: beast.hitDice,
+        hitDiceCurrent: beast.hitDice,
+      },
+      attacks: beast.attacks,
+      wildShape: {
+        ...sheetData.wildShape,
+        active: true,
+        beastId: beast.id,
+        beastName: beast.name,
+        usesRemaining: spendUse ? Math.max(0, sheetData.wildShape.usesRemaining - 1) : sheetData.wildShape.usesRemaining,
+        saved,
+      },
+    };
+
+    void persistWildShape(next, beast.tokenImagePath ?? null);
+  }
+
+  // excessDamage: si la reversión ocurre porque los PG de la bestia llegaron
+  // a 0, el daño sobrante pasa al personaje (regla de 5e).
+  function revertWildShape(excessDamage = 0) {
+    const saved = sheetData.wildShape.saved;
+    if (!saved) {
+      void persistWildShape({ ...sheetData, wildShape: { ...sheetData.wildShape, active: false, beastId: null, beastName: "" } });
+      return;
+    }
+    const next: SheetData = {
+      ...sheetData,
+      combat: {
+        ...sheetData.combat,
+        armorClass: saved.armorClass,
+        speed: saved.speed,
+        maxHp: saved.maxHp,
+        currentHp: Math.max(0, saved.currentHp - excessDamage),
+        temporaryHp: saved.temporaryHp,
+        hitDiceTotal: saved.hitDiceTotal,
+        hitDiceCurrent: saved.hitDiceCurrent,
+      },
+      attacks: saved.attacks,
+      wildShape: { ...sheetData.wildShape, active: false, beastId: null, beastName: "", saved: null },
+    };
+    void persistWildShape(next, saved.tokenImagePath);
+  }
+
+  function restoreWildShapeUses() {
+    void persistWildShape({ ...sheetData, wildShape: { ...sheetData.wildShape, usesRemaining: sheetData.wildShape.usesMax } });
+  }
+
+  // Enganchado desde el input de "PG actuales": si estás transformado y los
+  // PG bajan a 0, revierte automáticamente y pasa el daño sobrante al personaje.
+  function handleCurrentHpChange(value: number) {
+    if (sheetData.wildShape.active && value <= 0) {
+      revertWildShape(Math.abs(value));
+      return;
+    }
+    update({ ...sheetData, combat: { ...sheetData.combat, currentHp: value } });
+  }
+
   async function saveCharacter() {
     if (!character || !characterId) return;
     setIsSaving(true);
@@ -748,6 +936,16 @@ export default function CharacterSheetPage() {
     setMessage("");
 
     const characterName = sheetData.identity.characterName.trim() || character.name;
+
+    // Regla de mesa: una vez que se guarda la ficha, clase, raza, atributos
+    // y habilidades quedan fijos. Si todavía no estaba bloqueada, este
+    // guardado es el que la bloquea (a partir de aquí esos campos no se
+    // pueden volver a editar desde la ficha).
+    const nextSheetData = {
+      ...sheetData,
+      meta: { ...sheetData.meta, locked: true },
+      identity: { ...sheetData.identity, characterName },
+    };
 
     try {
       const response = await fetch(`${API_URL}/characters/${characterId}`, {
@@ -761,7 +959,8 @@ export default function CharacterSheetPage() {
           subclassId: selectedSubclassId || null,
           backgroundId: selectedBackgroundId || null,
           level: sheetData.identity.level,
-          sheetData: { ...sheetData, identity: { ...sheetData.identity, characterName } },
+          sheetData: nextSheetData,
+          syncCombatant: true,
         }),
       });
 
@@ -881,11 +1080,18 @@ export default function CharacterSheetPage() {
         {/* Header */}
         <header className="mb-6 flex flex-col gap-4 rounded-3xl border border-zinc-800 bg-zinc-900 p-6 shadow-2xl lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.3em] text-yellow-400">Ficha editable</p>
+            <p className="text-sm font-semibold uppercase tracking-[0.3em] text-yellow-400">
+              {isLocked ? "Ficha bloqueada" : "Ficha editable"}
+            </p>
             <h1 className="mt-2 text-3xl font-black">{sheetData.identity.characterName || character.name}</h1>
             <p className="mt-2 text-zinc-400">
               Nivel {sheetData.identity.level} · {sheetData.identity.race || "Sin raza"} · {sheetData.identity.className || "Sin clase"}
             </p>
+            {isLocked && (
+              <p className="mt-2 flex items-center gap-1.5 text-xs text-zinc-500">
+                🔒 Clase, raza, atributos y habilidades quedaron fijos al guardar la ficha.
+              </p>
+            )}
           </div>
           <div className="flex flex-col gap-3 sm:flex-row">
             <button type="button" onClick={() => void saveCharacter()} disabled={isSaving}
@@ -925,7 +1131,7 @@ export default function CharacterSheetPage() {
               <p className="mt-3 text-xs text-zinc-500">Esta imagen se usará como token en combate.</p>
             </Card>
 
-            <Card title="Atributos">
+            <Card title="Atributos" action={isLocked ? <LockedBadge /> : undefined}>
               <div className="space-y-3">
                 {abilityLabels.map((ability) => {
                   const score = sheetData.abilities[ability.key];
@@ -943,11 +1149,11 @@ export default function CharacterSheetPage() {
                           <p className="text-xs text-zinc-500">Sal. {signed(saveMod)}{hasSaveProf ? " ✓" : ""}</p>
                         </div>
                       </div>
-                      <input type="number" value={score}
+                      <input type="number" value={score} disabled={isLocked}
                         onChange={(e) => update({ ...sheetData, abilities: { ...sheetData.abilities, [ability.key]: Number(e.target.value) } })}
-                        className="mt-3 w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-center font-bold outline-none transition focus:border-yellow-400" />
-                      <label className="mt-2 flex items-center gap-2 text-xs text-zinc-400 cursor-pointer">
-                        <input type="checkbox" checked={hasSaveProf}
+                        className="mt-3 w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-center font-bold outline-none transition focus:border-yellow-400 disabled:cursor-not-allowed disabled:opacity-50" />
+                      <label className="mt-2 flex items-center gap-2 text-xs text-zinc-400 cursor-pointer has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50">
+                        <input type="checkbox" checked={hasSaveProf} disabled={isLocked}
                           onChange={(e) => update({ ...sheetData, proficiencies: { ...sheetData.proficiencies, savingThrows: { ...sheetData.proficiencies.savingThrows, [ability.key]: e.target.checked } } })}
                           className="accent-yellow-400" />
                         Competencia en salvación
@@ -959,15 +1165,15 @@ export default function CharacterSheetPage() {
             </Card>
 
             {/* Habilidades */}
-            <Card title="Habilidades">
+            <Card title="Habilidades" action={isLocked ? <LockedBadge /> : undefined}>
               <div className="space-y-1">
                 {skillLabels.map((skill) => {
                   const hasProficiency = sheetData.proficiencies.skills[skill.key] ?? false;
                   const abilityMod = getModifier(sheetData.abilities[skill.ability]);
                   const total = abilityMod + (hasProficiency ? sheetData.proficiencies.proficiencyBonus : 0);
                   return (
-                    <label key={skill.key} className="flex cursor-pointer items-center gap-3 rounded-xl px-2 py-1.5 hover:bg-zinc-800">
-                      <input type="checkbox" checked={hasProficiency}
+                    <label key={skill.key} className="flex items-center gap-3 rounded-xl px-2 py-1.5 hover:bg-zinc-800 cursor-pointer has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50 has-[:disabled]:hover:bg-transparent">
+                      <input type="checkbox" checked={hasProficiency} disabled={isLocked}
                         onChange={(e) => update({ ...sheetData, proficiencies: { ...sheetData.proficiencies, skills: { ...sheetData.proficiencies.skills, [skill.key]: e.target.checked } } })}
                         className="accent-yellow-400" />
                       <span className="flex-1 text-sm text-zinc-300">{skill.label}</span>
@@ -997,8 +1203,8 @@ export default function CharacterSheetPage() {
                 {/* Clase — selector de DB */}
                 <div>
                   <label className="mb-1 block text-sm font-bold text-zinc-300">Clase</label>
-                  <select value={selectedClassId} onChange={(e) => handleClassChange(e.target.value)}
-                    className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white outline-none transition focus:border-yellow-400">
+                  <select value={selectedClassId} onChange={(e) => handleClassChange(e.target.value)} disabled={isLocked}
+                    className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white outline-none transition focus:border-yellow-400 disabled:cursor-not-allowed disabled:opacity-50">
                     <option value="">— Seleccionar —</option>
                     {classes.map((c) => <option key={c.id} value={c.id}>{c.name} (d{c.hitDie})</option>)}
                   </select>
@@ -1013,8 +1219,8 @@ export default function CharacterSheetPage() {
                 <div>
                   <label className="mb-1 block text-sm font-bold text-zinc-300">Subclase</label>
                   <select value={selectedSubclassId} onChange={(e) => handleSubclassChange(e.target.value)}
-                    disabled={availableSubclasses.length === 0 || !canPickSubclass}
-                    className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white outline-none transition focus:border-yellow-400 disabled:opacity-50">
+                    disabled={isLocked || availableSubclasses.length === 0 || !canPickSubclass}
+                    className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white outline-none transition focus:border-yellow-400 disabled:cursor-not-allowed disabled:opacity-50">
                     <option value="">— Seleccionar —</option>
                     {availableSubclasses.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                   </select>
@@ -1028,8 +1234,8 @@ export default function CharacterSheetPage() {
                 {/* Raza — selector de DB */}
                 <div>
                   <label className="mb-1 block text-sm font-bold text-zinc-300">Raza</label>
-                  <select value={selectedRaceId} onChange={(e) => handleRaceChange(e.target.value)}
-                    className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white outline-none transition focus:border-yellow-400">
+                  <select value={selectedRaceId} onChange={(e) => handleRaceChange(e.target.value)} disabled={isLocked}
+                    className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white outline-none transition focus:border-yellow-400 disabled:cursor-not-allowed disabled:opacity-50">
                     <option value="">— Seleccionar —</option>
                     {races.map((r) => <option key={r.id} value={r.id}>{r.name} ({r.speed}ft)</option>)}
                   </select>
@@ -1038,8 +1244,8 @@ export default function CharacterSheetPage() {
                 {/* Trasfondo — selector de DB */}
                 <div>
                   <label className="mb-1 block text-sm font-bold text-zinc-300">Trasfondo</label>
-                  <select value={selectedBackgroundId} onChange={(e) => handleBackgroundChange(e.target.value)}
-                    className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white outline-none transition focus:border-yellow-400">
+                  <select value={selectedBackgroundId} onChange={(e) => handleBackgroundChange(e.target.value)} disabled={isLocked}
+                    className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white outline-none transition focus:border-yellow-400 disabled:cursor-not-allowed disabled:opacity-50">
                     <option value="">— Seleccionar —</option>
                     {backgrounds.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
                   </select>
@@ -1211,7 +1417,7 @@ export default function CharacterSheetPage() {
                   )}
                 </div>
                 <NumberField label="PG actuales" value={sheetData.combat.currentHp}
-                  onChange={(v) => update({ ...sheetData, combat: { ...sheetData.combat, currentHp: v } })} />
+                  onChange={handleCurrentHpChange} />
                 <NumberField label="PG temporales" value={sheetData.combat.temporaryHp}
                   onChange={(v) => update({ ...sheetData, combat: { ...sheetData.combat, temporaryHp: v } })} />
                 <ReadOnlyField label="Dados golpe total" value={sheetData.combat.hitDiceTotal} />
@@ -1228,6 +1434,65 @@ export default function CharacterSheetPage() {
                 </div>
               </div>
             </Card>
+
+            {/* Forma Salvaje — solo druidas */}
+            {isDruid && (
+              <Card title="Forma Salvaje" action={
+                <span className="flex items-center gap-2">
+                  <span className="rounded-full border border-zinc-700 bg-zinc-950 px-3 py-1 text-xs font-bold text-zinc-300">
+                    Usos: {sheetData.wildShape.usesRemaining}/{WILD_SHAPE_USES_MAX}
+                  </span>
+                  <button type="button" onClick={restoreWildShapeUses}
+                    className="rounded-xl border border-zinc-700 px-3 py-1.5 text-xs font-semibold text-zinc-300 transition hover:bg-zinc-800">
+                    Descanso
+                  </button>
+                </span>
+              }>
+                {sheetData.wildShape.active ? (
+                  <div className="rounded-2xl border border-yellow-500/40 bg-yellow-500/10 p-4">
+                    <p className="text-lg font-black text-yellow-300">🐾 {sheetData.wildShape.beastName}</p>
+                    <p className="mt-1 text-sm text-zinc-300">
+                      CA {sheetData.combat.armorClass} · PG {sheetData.combat.currentHp}/{sheetData.combat.maxHp} · Velocidad {sheetData.combat.speed} ft
+                    </p>
+                    <button type="button" onClick={() => revertWildShape(0)}
+                      className="mt-3 w-full rounded-xl bg-yellow-500 px-4 py-2 font-black text-zinc-950 transition hover:bg-yellow-400">
+                      Revertir forma
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <p className="mb-3 text-sm text-zinc-400">
+                      {isMoonDruid ? "Círculo de la Luna" : "Druida"} · Nivel {sheetData.identity.level} · {eligibleBeasts.length} bestia(s) disponibles
+                    </p>
+                    <div className="max-h-72 space-y-1.5 overflow-y-auto pr-1">
+                      {eligibleBeasts.length === 0 ? (
+                        <p className="rounded-xl border border-dashed border-zinc-700 px-3 py-4 text-center text-sm text-zinc-500">
+                          Todavía no hay bestias disponibles a tu nivel.
+                        </p>
+                      ) : (
+                        eligibleBeasts.map((beast) => (
+                          <button key={beast.id} type="button"
+                            disabled={sheetData.wildShape.usesRemaining <= 0}
+                            onClick={() => transformInto(beast)}
+                            className="flex w-full items-center justify-between rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-left transition hover:border-yellow-400 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-50">
+                            <span>
+                              <span className="block text-sm font-bold text-zinc-200">{beast.name}</span>
+                              <span className="block text-xs text-zinc-500">
+                                CR {beast.crLabel} · CA {beast.ac} · PG {beast.hp} · {describeBeastSpeed(beast)}
+                              </span>
+                            </span>
+                            <span className="text-xs font-bold text-yellow-300">Transformar</span>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                    {sheetData.wildShape.usesRemaining <= 0 && (
+                      <p className="mt-2 text-xs text-yellow-400">Sin usos — descansa para recuperarlos.</p>
+                    )}
+                  </>
+                )}
+              </Card>
+            )}
 
             {/* Ataques */}
             <Card title="Ataques" action={
@@ -1518,6 +1783,14 @@ export default function CharacterSheetPage() {
 }
 
 // ─── Subcomponentes ───────────────────────────────────────────────────────────
+
+function LockedBadge() {
+  return (
+    <span className="flex items-center gap-1 rounded-full border border-zinc-700 bg-zinc-950 px-2.5 py-1 text-xs font-bold text-zinc-400">
+      🔒 Bloqueado
+    </span>
+  );
+}
 
 function Card({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
   return (

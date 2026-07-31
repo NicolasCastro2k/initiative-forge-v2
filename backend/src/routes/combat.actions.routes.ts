@@ -776,6 +776,280 @@ combatActionsRouter.post(
   }
 );
 
+// ─── Forma Salvaje en el tablero de combate ────────────────────────────────────
+// El combatiente en la tabla Combatant es una "foto" de CA/PG/velocidad
+// tomada al iniciar el combate; estos endpoints actualizan tanto el
+// personaje (sheetData.wildShape) como esa foto, y avisan por socket.
+
+type WildShapeSaved = {
+  armorClass: number;
+  speed: number;
+  maxHp: number;
+  currentHp: number;
+  temporaryHp: number;
+  hitDiceTotal?: string;
+  hitDiceCurrent?: string;
+  attacks: unknown[];
+  tokenImagePath: string | null;
+};
+
+type WildShapeSheet = {
+  active: boolean;
+  beastId: string | null;
+  beastName: string;
+  usesRemaining: number;
+  usesMax: number;
+  saved: WildShapeSaved | null;
+};
+
+const DEFAULT_WILD_SHAPE: WildShapeSheet = {
+  active: false, beastId: null, beastName: "", usesRemaining: 2, usesMax: 2, saved: null,
+};
+
+// ─── GET /games/:gameId/combat/wildshape/:combatantId ────────────────────────
+
+combatActionsRouter.get(
+  "/games/:gameId/combat/wildshape/:combatantId",
+  async (req, res) => {
+    try {
+      const user = getAuthUser(req);
+      if (!user) return res.status(401).json({ message: "No autenticado." });
+
+      const { gameId, combatantId } = req.params;
+      const membership = await requireMembership(gameId, user.id);
+      if (!membership) return res.status(403).json({ message: "Sin acceso." });
+
+      const encounter = await getEncounterWithCombatants(gameId);
+      if (!encounter) return res.status(404).json({ message: "Sin combate activo." });
+
+      const combatant = encounter.combatants.find((c) => c.id === combatantId);
+      if (!combatant || !combatant.character) {
+        return res.json({ isDruid: false });
+      }
+
+      const character = combatant.character;
+      const isDruid = character.classId === "druid";
+      if (!isDruid) return res.json({ isDruid: false });
+
+      const isMoonDruid = character.subclassId === "druid-circle-of-the-moon";
+      const sheet = parseRealSheet(character.sheetData) as unknown as Record<string, unknown>;
+      const wildShape = (sheet.wildShape as WildShapeSheet | undefined) ?? DEFAULT_WILD_SHAPE;
+
+      const beasts = await prisma.beastPreset.findMany({ orderBy: [{ cr: "asc" }, { name: "asc" }] });
+      const eligibleBeasts = beasts.filter((b) => {
+        const minLevel = isMoonDruid ? b.minMoonDruidLevel : b.minDruidLevel;
+        return minLevel !== null && character.level >= minLevel;
+      });
+
+      return res.json({
+        isDruid: true,
+        isMoonDruid,
+        level: character.level,
+        wildShape: {
+          active: wildShape.active,
+          beastName: wildShape.beastName,
+          usesRemaining: wildShape.usesRemaining,
+          usesMax: wildShape.usesMax,
+        },
+        beasts: eligibleBeasts,
+      });
+    } catch (error) {
+      console.error("Error en GET wildshape:", error);
+      return res.status(500).json({ message: "Error interno." });
+    }
+  }
+);
+
+function canControlWildShape(
+  membership: { role: string },
+  combatant: { ownerUserId: string | null },
+  userId: string,
+) {
+  return membership.role === "DM" || combatant.ownerUserId === userId;
+}
+
+// ─── POST /games/:gameId/combat/wildshape/:combatantId/transform ─────────────
+
+combatActionsRouter.post(
+  "/games/:gameId/combat/wildshape/:combatantId/transform",
+  async (req, res) => {
+    try {
+      const user = getAuthUser(req);
+      if (!user) return res.status(401).json({ message: "No autenticado." });
+
+      const { gameId, combatantId } = req.params;
+      const membership = await requireMembership(gameId, user.id);
+      if (!membership) return res.status(403).json({ message: "Sin acceso." });
+
+      const encounter = await getEncounterWithCombatants(gameId);
+      if (!encounter) return res.status(404).json({ message: "Sin combate activo." });
+
+      const combatant = encounter.combatants.find((c) => c.id === combatantId);
+      if (!combatant || !combatant.character) {
+        return res.status(404).json({ message: "Combatiente no encontrado." });
+      }
+      if (!canControlWildShape(membership, combatant, user.id)) {
+        return res.status(403).json({ message: "No puedes controlar este combatiente." });
+      }
+
+      const beast = await prisma.beastPreset.findUnique({ where: { id: String(req.body.beastId ?? "") } });
+      if (!beast) return res.status(404).json({ message: "Bestia no encontrada." });
+
+      const character = combatant.character;
+      const sheet = parseRealSheet(character.sheetData) as unknown as Record<string, unknown>;
+      const combatBlock = (sheet.combat as Record<string, unknown>) ?? {};
+      const wildShape = (sheet.wildShape as WildShapeSheet | undefined) ?? DEFAULT_WILD_SHAPE;
+
+      if (wildShape.usesRemaining <= 0 && !wildShape.active) {
+        return res.status(400).json({ message: "Sin usos de Forma Salvaje disponibles." });
+      }
+
+      const spendUse = !wildShape.active;
+      const saved: WildShapeSaved = wildShape.saved ?? {
+        armorClass: Number(combatBlock.armorClass ?? 10),
+        speed: Number(combatBlock.speed ?? 30),
+        maxHp: Number(combatBlock.maxHp ?? 10),
+        currentHp: Number(combatBlock.currentHp ?? 10),
+        temporaryHp: Number(combatBlock.temporaryHp ?? 0),
+        hitDiceTotal: combatBlock.hitDiceTotal as string | undefined,
+        hitDiceCurrent: combatBlock.hitDiceCurrent as string | undefined,
+        attacks: (sheet.attacks as unknown[]) ?? [],
+        tokenImagePath: character.tokenImagePath,
+      };
+
+      const primarySpeed = beast.speedWalk || Math.max(beast.speedFly, beast.speedSwim, beast.speedClimb, beast.speedBurrow, 0);
+
+      const nextSheet = {
+        ...sheet,
+        combat: {
+          ...combatBlock,
+          armorClass: beast.ac,
+          speed: primarySpeed,
+          maxHp: beast.hp,
+          currentHp: beast.hp,
+          temporaryHp: 0,
+          ...(combatBlock.hitDiceTotal !== undefined ? { hitDiceTotal: beast.hitDice, hitDiceCurrent: beast.hitDice } : {}),
+        },
+        attacks: beast.attacks,
+        wildShape: {
+          active: true,
+          beastId: beast.id,
+          beastName: beast.name,
+          usesRemaining: spendUse ? Math.max(0, wildShape.usesRemaining - 1) : wildShape.usesRemaining,
+          usesMax: wildShape.usesMax,
+          saved,
+        },
+      };
+
+      await prisma.character.update({
+        where: { id: character.id },
+        data: { sheetData: nextSheet, tokenImagePath: beast.tokenImagePath ?? character.tokenImagePath },
+      });
+
+      await prisma.combatant.update({
+        where: { id: combatant.id },
+        data: { ac: beast.ac, maxHp: beast.hp, hp: beast.hp, speed: primarySpeed },
+      });
+
+      await logAction(encounter.id, encounter.round, combatant.name, "wildshape", `${combatant.name} se transforma en ${beast.name}`);
+
+      const updatedEncounter = await getEncounterWithCombatants(gameId);
+      emitToGame(gameId, "combat:updated", { encounter: updatedEncounter });
+
+      return res.json({ encounter: updatedEncounter });
+    } catch (error) {
+      console.error("Error en wildshape transform:", error);
+      return res.status(500).json({ message: "Error interno." });
+    }
+  }
+);
+
+// ─── POST /games/:gameId/combat/wildshape/:combatantId/revert ────────────────
+
+combatActionsRouter.post(
+  "/games/:gameId/combat/wildshape/:combatantId/revert",
+  async (req, res) => {
+    try {
+      const user = getAuthUser(req);
+      if (!user) return res.status(401).json({ message: "No autenticado." });
+
+      const { gameId, combatantId } = req.params;
+      const membership = await requireMembership(gameId, user.id);
+      if (!membership) return res.status(403).json({ message: "Sin acceso." });
+
+      const encounter = await getEncounterWithCombatants(gameId);
+      if (!encounter) return res.status(404).json({ message: "Sin combate activo." });
+
+      const combatant = encounter.combatants.find((c) => c.id === combatantId);
+      if (!combatant || !combatant.character) {
+        return res.status(404).json({ message: "Combatiente no encontrado." });
+      }
+      if (!canControlWildShape(membership, combatant, user.id)) {
+        return res.status(403).json({ message: "No puedes controlar este combatiente." });
+      }
+
+      const excessDamage = Math.max(0, Number(req.body.excessDamage) || 0);
+
+      const character = combatant.character;
+      const sheet = parseRealSheet(character.sheetData) as unknown as Record<string, unknown>;
+      const wildShape = sheet.wildShape as WildShapeSheet | undefined;
+
+      if (!wildShape?.active) {
+        return res.status(400).json({ message: "No está transformado." });
+      }
+
+      const saved = wildShape.saved;
+      const combatBlock = (sheet.combat as Record<string, unknown>) ?? {};
+
+      const nextCombat = saved
+        ? {
+            ...combatBlock,
+            armorClass: saved.armorClass,
+            speed: saved.speed,
+            maxHp: saved.maxHp,
+            currentHp: Math.max(0, saved.currentHp - excessDamage),
+            temporaryHp: saved.temporaryHp,
+            ...(saved.hitDiceTotal !== undefined ? { hitDiceTotal: saved.hitDiceTotal, hitDiceCurrent: saved.hitDiceCurrent } : {}),
+          }
+        : combatBlock;
+
+      const nextSheet = {
+        ...sheet,
+        combat: nextCombat,
+        attacks: saved ? saved.attacks : sheet.attacks,
+        wildShape: { ...wildShape, active: false, beastId: null, beastName: "", saved: null },
+      };
+
+      await prisma.character.update({
+        where: { id: character.id },
+        data: { sheetData: nextSheet, tokenImagePath: saved ? saved.tokenImagePath : character.tokenImagePath },
+      });
+
+      if (saved) {
+        await prisma.combatant.update({
+          where: { id: combatant.id },
+          data: {
+            ac: Number(nextCombat.armorClass),
+            maxHp: Number(nextCombat.maxHp),
+            hp: Number(nextCombat.currentHp),
+            speed: Number(nextCombat.speed),
+          },
+        });
+      }
+
+      await logAction(encounter.id, encounter.round, combatant.name, "wildshape", `${combatant.name} revierte su Forma Salvaje`);
+
+      const updatedEncounter = await getEncounterWithCombatants(gameId);
+      emitToGame(gameId, "combat:updated", { encounter: updatedEncounter });
+
+      return res.json({ encounter: updatedEncounter });
+    } catch (error) {
+      console.error("Error en wildshape revert:", error);
+      return res.status(500).json({ message: "Error interno." });
+    }
+  }
+);
+
 // ─── GET /games/:gameId/combat/logs ──────────────────────────────────────────
 
 combatActionsRouter.get(

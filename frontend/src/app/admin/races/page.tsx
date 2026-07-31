@@ -214,9 +214,20 @@ export default function AdminRacesPage() {
   }
 
   return (
-    <main className="min-h-screen bg-zinc-950 p-6 text-white">
-      <div className="mx-auto max-w-6xl">
-        <header className="mb-8 flex flex-col gap-4 rounded-3xl border border-zinc-800 bg-zinc-900 p-6 shadow-2xl md:flex-row md:items-center md:justify-between">
+    <main className="relative flex h-screen flex-col overflow-hidden bg-zinc-950 p-6 text-white">
+      {/* Imagen de fondo */}
+      <div
+        className="pointer-events-none absolute inset-0 opacity-100"
+        style={{
+          backgroundImage: "url('/backgrounds/races-bg.jpg')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
+      />
+      <div className="absolute inset-0 bg-gradient-to-b from-zinc-950/10 via-zinc-950/10 to-zinc-950/10" />
+
+      <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-1 flex-col overflow-hidden">
+        <header className="mb-8 flex flex-shrink-0 flex-col gap-4 rounded-3xl border border-zinc-800 bg-zinc-900 p-6 shadow-2xl md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.3em] text-yellow-400">
               Initiative Forge
@@ -255,8 +266,8 @@ export default function AdminRacesPage() {
           </div>
         </header>
 
-        <div className="grid gap-6 lg:grid-cols-[440px_1fr]">
-          <section className="rounded-3xl border border-zinc-800 bg-zinc-900 p-6 shadow-2xl">
+        <div className="grid min-h-0 flex-1 gap-6 overflow-hidden lg:grid-cols-[440px_1fr]">
+          <section className="min-h-0 overflow-y-auto rounded-3xl border border-zinc-800 bg-zinc-900 p-6 shadow-2xl">
             <h2 className="text-xl font-black">
               {editingId ? "Editar raza" : "Crear raza"}
             </h2>
@@ -407,13 +418,13 @@ export default function AdminRacesPage() {
             </form>
           </section>
 
-          <section className="rounded-3xl border border-zinc-800 bg-zinc-900 p-6 shadow-2xl">
+          <section className="flex min-h-0 flex-col rounded-3xl border border-zinc-800 bg-zinc-900 p-6 shadow-2xl">
             <h2 className="text-xl font-black">Catálogo de razas</h2>
             <p className="mt-1 text-sm text-zinc-400">
               {races.length} raza(s) disponibles en las fichas de personaje.
             </p>
 
-            <div className="mt-6 overflow-hidden rounded-2xl border border-zinc-800">
+            <div className="mt-6 min-h-0 flex-1 overflow-y-auto rounded-2xl border border-zinc-800">
               {isLoading ? (
                 <div className="bg-zinc-950 p-4 text-sm text-zinc-400">Cargando razas...</div>
               ) : races.length === 0 ? (

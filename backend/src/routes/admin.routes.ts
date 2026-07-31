@@ -1,5 +1,9 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
+import multer from "multer";
+import path from "node:path";
+import fs from "node:fs";
+import crypto from "node:crypto";
 import { prisma } from "../lib/prisma.js";
 import { requireAdmin, requireAuth } from "../lib/requireAuth.js";
 
@@ -7,6 +11,33 @@ export const adminRouter = Router();
 
 adminRouter.use(requireAuth);
 adminRouter.use(requireAdmin);
+
+// ─── Subida de token para bestias (Forma Salvaje) ──────────────────────────────
+// Mismo patrón que /characters/:characterId/image en characters.routes.ts.
+const beastUploadsDir = path.join(process.cwd(), "uploads", "beasts");
+fs.mkdirSync(beastUploadsDir, { recursive: true });
+
+const beastImageStorage = multer.diskStorage({
+  destination: (_req, _file, callback) => callback(null, beastUploadsDir),
+  filename: (_req, file, callback) => {
+    const extension = path.extname(file.originalname).toLowerCase();
+    const safeName = `${Date.now()}-${crypto.randomUUID()}${extension}`;
+    callback(null, safeName);
+  },
+});
+
+const uploadBeastImage = multer({
+  storage: beastImageStorage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, callback) => {
+    const allowed = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    if (!allowed.includes(file.mimetype)) {
+      callback(new Error("Solo se permiten imágenes JPG, PNG, WEBP o GIF."));
+      return;
+    }
+    callback(null, true);
+  },
+});
 
 adminRouter.post("/users", async (req, res) => {
   const name = String(req.body.name ?? "").trim();
@@ -444,5 +475,141 @@ adminRouter.delete("/races/:raceId", async (req, res) => {
   } catch (error) {
     console.error("Error en DELETE /admin/races/:raceId:", error);
     return res.status(500).json({ message: "Error interno al eliminar la raza." });
+  }
+});
+
+// ─── Administración de bestias — Forma Salvaje (BeastPreset) ──────────────────
+
+function beastDataFromBody(req: import("express").Request, existing?: { [key: string]: unknown }) {
+  const pick = (key: string, fallback: unknown) => (req.body[key] !== undefined ? req.body[key] : (existing ? existing[key] : fallback));
+
+  return {
+    name: String(pick("name", "")).trim(),
+    nameEn: pick("nameEn", null) ? String(pick("nameEn", "")).trim() : null,
+    cr: Number(pick("cr", 0)),
+    crLabel: String(pick("crLabel", "0")).trim(),
+    ac: Number(pick("ac", 10)),
+    hp: Number(pick("hp", 1)),
+    hitDice: String(pick("hitDice", "")).trim(),
+    speedWalk: Number(pick("speedWalk", 0)),
+    speedFly: Number(pick("speedFly", 0)),
+    speedSwim: Number(pick("speedSwim", 0)),
+    speedClimb: Number(pick("speedClimb", 0)),
+    speedBurrow: Number(pick("speedBurrow", 0)),
+    size: String(pick("size", "Mediano")).trim(),
+    strength: Number(pick("strength", 10)),
+    dexterity: Number(pick("dexterity", 10)),
+    constitution: Number(pick("constitution", 10)),
+    attacks: Array.isArray(pick("attacks", [])) ? pick("attacks", []) : [],
+    traits: String(pick("traits", "")).trim(),
+    vulnerabilities: pick("vulnerabilities", null) ? String(pick("vulnerabilities", "")).trim() : null,
+    resistances: pick("resistances", null) ? String(pick("resistances", "")).trim() : null,
+    immunities: pick("immunities", null) ? String(pick("immunities", "")).trim() : null,
+    conditionImmunities: pick("conditionImmunities", null) ? String(pick("conditionImmunities", "")).trim() : null,
+    multiattack: Boolean(pick("multiattack", false)),
+    minDruidLevel: pick("minDruidLevel", null) === null || pick("minDruidLevel", null) === "" ? null : Number(pick("minDruidLevel", null)),
+    minMoonDruidLevel: pick("minMoonDruidLevel", null) === null || pick("minMoonDruidLevel", null) === "" ? null : Number(pick("minMoonDruidLevel", null)),
+    source: String(pick("source", "Personalizada")).trim(),
+  };
+}
+adminRouter.get("/beasts", async (_req, res) => {
+  try {
+    const beasts = await prisma.beastPreset.findMany({
+      orderBy: [{ cr: "asc" }, { name: "asc" }],
+    });
+
+    return res.json({ beasts });
+  } catch (error) {
+    console.error("Error en GET /admin/beasts:", error);
+    return res.status(500).json({ message: "Error interno al cargar bestias." });
+  }
+});
+
+adminRouter.post("/beasts", async (req, res) => {
+  try {
+    const data = beastDataFromBody(req);
+
+    if (!data.name || !data.hitDice) {
+      return res.status(400).json({ message: "Nombre y dado de golpe son obligatorios." });
+    }
+
+    let id = slugify(data.name);
+    const existing = await prisma.beastPreset.findUnique({ where: { id } });
+    if (existing) id = `${id}-${Date.now()}`;
+
+    const beast = await prisma.beastPreset.create({ data: { id, ...data } });
+
+    return res.status(201).json({ beast });
+  } catch (error) {
+    console.error("Error en POST /admin/beasts:", error);
+    return res.status(500).json({ message: "Error interno al crear la bestia." });
+  }
+});
+
+adminRouter.put("/beasts/:beastId", async (req, res) => {
+  try {
+    const beastId = String(req.params.beastId);
+
+    const existing = await prisma.beastPreset.findUnique({ where: { id: beastId } });
+    if (!existing) {
+      return res.status(404).json({ message: "Bestia no encontrada." });
+    }
+
+    const beast = await prisma.beastPreset.update({
+      where: { id: beastId },
+      data: beastDataFromBody(req, existing as unknown as { [key: string]: unknown }),
+    });
+
+    return res.json({ beast });
+  } catch (error) {
+    console.error("Error en PUT /admin/beasts/:beastId:", error);
+    return res.status(500).json({ message: "Error interno al actualizar la bestia." });
+  }
+});
+
+adminRouter.delete("/beasts/:beastId", async (req, res) => {
+  try {
+    const beastId = String(req.params.beastId);
+
+    const existing = await prisma.beastPreset.findUnique({ where: { id: beastId } });
+    if (!existing) {
+      return res.status(404).json({ message: "Bestia no encontrada." });
+    }
+
+    await prisma.beastPreset.delete({ where: { id: beastId } });
+
+    return res.json({ ok: true, message: "Bestia eliminada." });
+  } catch (error) {
+    console.error("Error en DELETE /admin/beasts/:beastId:", error);
+    return res.status(500).json({ message: "Error interno al eliminar la bestia." });
+  }
+});
+
+adminRouter.post("/beasts/:beastId/image", uploadBeastImage.single("image"), async (req, res) => {
+  try {
+    const beastId = String(req.params.beastId);
+
+    const existing = await prisma.beastPreset.findUnique({ where: { id: beastId } });
+    if (!existing) {
+      return res.status(404).json({ message: "Bestia no encontrada." });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ message: "Debes subir una imagen." });
+    }
+
+    const imagePath = `/uploads/beasts/${req.file.filename}`;
+
+    const beast = await prisma.beastPreset.update({
+      where: { id: beastId },
+      data: { tokenImagePath: imagePath },
+    });
+
+    return res.json({ beast, imagePath, message: "Token actualizado." });
+  } catch (error) {
+    console.error("Error en POST /admin/beasts/:beastId/image:", error);
+    return res.status(500).json({
+      message: error instanceof Error ? error.message : "Error interno al subir el token.",
+    });
   }
 });

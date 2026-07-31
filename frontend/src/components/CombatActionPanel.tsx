@@ -92,6 +92,22 @@ type SavingThrowResult = {
   detail: string;
 };
 
+type BeastPreset = {
+  id: string;
+  name: string;
+  crLabel: string;
+  ac: number;
+  hp: number;
+};
+
+type WildShapeStatus = {
+  isDruid: boolean;
+  isMoonDruid?: boolean;
+  level?: number;
+  wildShape?: { active: boolean; beastName: string; usesRemaining: number; usesMax: number };
+  beasts?: BeastPreset[];
+};
+
 // ─── Props ───────────────────────────────────────────────────────────────────
 
 type Props = {
@@ -110,7 +126,7 @@ type Props = {
 
 // ─── Componente ──────────────────────────────────────────────────────────────
 
-type Tab = "move" | "attack" | "spell" | "save" | "conditions";
+type Tab = "move" | "attack" | "spell" | "save" | "conditions" | "wildshape";
 
 export default function CombatActionPanel({
   gameId,
@@ -145,6 +161,8 @@ export default function CombatActionPanel({
   const [lastResult, setLastResult] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [wildShapeStatus, setWildShapeStatus] = useState<WildShapeStatus | null>(null);
+  const [isTransforming, setIsTransforming] = useState(false);
 
   const canControl =
     isDm ||
@@ -166,7 +184,9 @@ export default function CombatActionPanel({
         .then((r) => r.json()).catch(() => null),
       fetch(`${API_URL}/games/${gameId}/combat/spells/${selectedCombatant.id}`, { credentials: "include" })
         .then((r) => r.json()).catch(() => null),
-    ]).then(([weaponData, spellData]) => {
+      fetch(`${API_URL}/games/${gameId}/combat/wildshape/${selectedCombatant.id}`, { credentials: "include" })
+        .then((r) => r.json()).catch(() => null),
+    ]).then(([weaponData, spellData, wildShapeData]) => {
       const loadedWeapons = (weaponData?.weapons ?? []) as WeaponData[];
       const loadedSpells = (spellData?.spells ?? []) as SpellData[];
       setWeapons(loadedWeapons);
@@ -174,8 +194,17 @@ export default function CombatActionPanel({
       setSelectedWeapon(loadedWeapons[0] ?? null);
       setSelectedSpell(loadedSpells[0] ?? null);
       setSpellSaveDc(spellData?.spellSaveDc ?? 0);
+      setWildShapeStatus((wildShapeData as WildShapeStatus) ?? { isDruid: false });
     });
   }, [selectedCombatant?.id, gameId]);
+
+  // Si cambias a un combatiente que no es druida mientras estabas en la
+  // pestaña de Forma Salvaje, evita que quede "pegada" mostrando datos viejos.
+  useEffect(() => {
+    if (tab === "wildshape" && wildShapeStatus && !wildShapeStatus.isDruid) {
+      setTab("move");
+    }
+  }, [wildShapeStatus, tab]);
 
   // Cargar casillas alcanzables cuando se activa tab de movimiento
   useEffect(() => {
@@ -366,6 +395,59 @@ export default function CombatActionPanel({
     }
   }
 
+  async function handleTransform(beastId: string) {
+    if (!selectedCombatant) return;
+    setIsTransforming(true);
+    setError("");
+
+    try {
+      const res = await fetch(`${API_URL}/games/${gameId}/combat/wildshape/${selectedCombatant.id}/transform`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ beastId }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.message); return; }
+
+      const beastName = wildShapeStatus?.beasts?.find((b) => b.id === beastId)?.name ?? "una bestia";
+      const text = `${selectedCombatant.name} usa Forma Salvaje → ${beastName}`;
+      setLastResult(text);
+      onLogEntry(text);
+      onCombatUpdated();
+    } catch {
+      setError("Error de conexión.");
+    } finally {
+      setIsTransforming(false);
+    }
+  }
+
+  async function handleRevertWildShape() {
+    if (!selectedCombatant) return;
+    setIsTransforming(true);
+    setError("");
+
+    try {
+      const res = await fetch(`${API_URL}/games/${gameId}/combat/wildshape/${selectedCombatant.id}/revert`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.message); return; }
+
+      const text = `${selectedCombatant.name} revierte su Forma Salvaje`;
+      setLastResult(text);
+      onLogEntry(text);
+      onCombatUpdated();
+    } catch {
+      setError("Error de conexión.");
+    } finally {
+      setIsTransforming(false);
+    }
+  }
+
   // ─── Render ─────────────────────────────────────────────────────────────────
 
   if (!selectedCombatant) {
@@ -482,13 +564,17 @@ export default function CombatActionPanel({
 
       {/* Tabs */}
       <div className="flex border-b border-zinc-800">
-        {(["move", "attack", "spell", "save", "conditions"] as Tab[]).map((t) => {
+        {([
+          "move", "attack", "spell", "save", "conditions",
+          ...(wildShapeStatus?.isDruid ? (["wildshape"] as Tab[]) : []),
+        ] as Tab[]).map((t) => {
           const labels: Record<Tab, string> = {
             move: "Mover",
             attack: "Atacar",
             spell: "Hechizo",
             save: "Salvación",
             conditions: "Condiciones",
+            wildshape: "🐾 Forma",
           };
           return (
             <button
@@ -837,6 +923,53 @@ export default function CombatActionPanel({
                 );
               })}
             </div>
+          </div>
+        )}
+
+        {/* ─ TAB: FORMA SALVAJE ─────────────────────────────────────────────── */}
+        {tab === "wildshape" && (
+          <div className="space-y-4">
+            {!canControl && (
+              <p className="text-xs text-zinc-500">No controlas este combatiente.</p>
+            )}
+
+            <div className="flex items-center justify-between rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2">
+              <span className="text-xs font-bold text-zinc-400">
+                {wildShapeStatus?.isMoonDruid ? "Círculo de la Luna" : "Druida"} · Nivel {wildShapeStatus?.level ?? "—"}
+              </span>
+              <span className="rounded-full border border-zinc-700 px-2.5 py-0.5 text-xs font-bold text-zinc-300">
+                Usos: {wildShapeStatus?.wildShape?.usesRemaining ?? 0}/{wildShapeStatus?.wildShape?.usesMax ?? 2}
+              </span>
+            </div>
+
+            {wildShapeStatus?.wildShape?.active ? (
+              <div className="rounded-2xl border border-yellow-500/40 bg-yellow-500/10 p-4">
+                <p className="text-lg font-black text-yellow-300">🐾 {wildShapeStatus.wildShape.beastName}</p>
+                <button type="button" disabled={!canControl || isTransforming}
+                  onClick={handleRevertWildShape}
+                  className="mt-3 w-full rounded-xl bg-yellow-500 px-4 py-2 font-black text-zinc-950 transition hover:bg-yellow-400 disabled:cursor-not-allowed disabled:opacity-50">
+                  {isTransforming ? "..." : "Revertir forma"}
+                </button>
+              </div>
+            ) : (
+              <div className="max-h-72 space-y-1.5 overflow-y-auto pr-1">
+                {(wildShapeStatus?.beasts ?? []).length === 0 ? (
+                  <p className="rounded-xl border border-dashed border-zinc-700 px-3 py-4 text-center text-xs text-zinc-500">
+                    Sin bestias disponibles a este nivel.
+                  </p>
+                ) : (
+                  wildShapeStatus?.beasts?.map((beast) => (
+                    <button key={beast.id} type="button"
+                      disabled={!canControl || isTransforming || (wildShapeStatus?.wildShape?.usesRemaining ?? 0) <= 0}
+                      onClick={() => handleTransform(beast.id)}
+                      className="flex w-full items-center justify-between rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-left transition hover:border-yellow-400 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-50">
+                      <span className="text-sm font-bold text-zinc-200">{beast.name}</span>
+                      <span className="text-xs text-zinc-500">CR {beast.crLabel} · CA {beast.ac} · PG {beast.hp}</span>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
           </div>
         )}
 

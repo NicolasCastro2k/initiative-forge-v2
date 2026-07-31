@@ -79,7 +79,7 @@ export default function DashboardPage() {
           de la página, para que no se desmonte/remonte (y "parpadee")
           al pasar de isLoading a con datos. */}
       <div
-        className="pointer-events-none absolute inset-0 opacity-50"
+        className="pointer-events-none absolute inset-0 opacity-100"
         style={{
           backgroundImage: "url('/backgrounds/dashboard-bg.jpg')",
           backgroundSize: "cover",
@@ -281,6 +281,20 @@ export default function DashboardPage() {
                   </h2>
                   <p className="mt-2 text-zinc-300">
                     Agregar, editar o eliminar razas del catálogo.
+                  </p>
+                </a>
+              ) : null}
+
+              {user.isAdmin ? (
+                <a
+                  href="/admin/beasts"
+                  className="rounded-3xl border border-yellow-500/40 bg-yellow-500/10 p-6 transition hover:border-yellow-400 hover:bg-yellow-500/20"
+                >
+                  <h2 className="text-xl font-black text-white">
+                    Administrar bestias
+                  </h2>
+                  <p className="mt-2 text-zinc-300">
+                    Agregar, editar o eliminar bestias de Forma Salvaje.
                   </p>
                 </a>
               ) : null}

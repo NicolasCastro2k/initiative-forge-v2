@@ -215,3 +215,24 @@ presetsRouter.get("/presets/spells/:spellId", async (req, res) => {
     return res.status(500).json({ message: "Error interno al cargar hechizo." });
   }
 });
+
+// ─── GET /presets/beasts ──────────────────────────────────────────────────────
+// Lee de la tabla BeastPreset en la base de datos. Catálogo de bestias para
+// la habilidad Forma Salvaje del druida. El filtrado por nivel/subclase
+// (minDruidLevel / minMoonDruidLevel) se hace en el frontend.
+
+presetsRouter.get("/presets/beasts", async (req, res) => {
+  try {
+    const user = getAuthUser(req);
+    if (!user) return res.status(401).json({ message: "Debes iniciar sesión." });
+
+    const beasts = await prisma.beastPreset.findMany({
+      orderBy: [{ cr: "asc" }, { name: "asc" }],
+    });
+
+    return res.json({ beasts });
+  } catch (error) {
+    console.error("Error en GET /presets/beasts:", error);
+    return res.status(500).json({ message: "Error interno al cargar bestias." });
+  }
+});

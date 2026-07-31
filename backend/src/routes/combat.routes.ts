@@ -1,3 +1,4 @@
+// Va en: backend/src/routes/combat.routes.ts
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { getAuthUser } from "../lib/getAuthUser.js";
@@ -413,6 +414,7 @@ combatRouter.patch(
         hp?: number;
         maxHp?: number;
         ac?: number;
+        speed?: number;
         x?: number;
         y?: number;
         initiative?: number;
@@ -432,6 +434,58 @@ combatRouter.patch(
       if (req.body.hp !== undefined) data.hp = toInt(req.body.hp, combatant.hp);
       if (isDm && req.body.maxHp !== undefined) data.maxHp = toInt(req.body.maxHp, combatant.maxHp);
       if (isDm && req.body.ac !== undefined) data.ac = toInt(req.body.ac, combatant.ac);
+
+      // Si el PG llega a 0 (o menos) mientras el personaje está en Forma
+      // Salvaje, revertir automáticamente en vez de dejar las estadísticas
+      // de la bestia colgadas con 0 PG. El daño sobrante pasa al personaje.
+      if (data.hp !== undefined && data.hp <= 0 && combatant.characterId) {
+        const character = await prisma.character.findUnique({ where: { id: combatant.characterId } });
+        const sheet = (character?.sheetData ?? {}) as {
+          combat?: Record<string, unknown>;
+          wildShape?: {
+            active: boolean;
+            saved: {
+              armorClass: number; speed: number; maxHp: number; currentHp: number;
+              temporaryHp: number; hitDiceTotal?: string; hitDiceCurrent?: string;
+              attacks: unknown[]; tokenImagePath: string | null;
+            } | null;
+          };
+        };
+
+        if (character && sheet.wildShape?.active && sheet.wildShape.saved) {
+          const saved = sheet.wildShape.saved;
+          const excessDamage = Math.max(0, -data.hp);
+          const combatBlock = sheet.combat ?? {};
+
+          const nextCombat = {
+            ...combatBlock,
+            armorClass: saved.armorClass,
+            speed: saved.speed,
+            maxHp: saved.maxHp,
+            currentHp: Math.max(0, saved.currentHp - excessDamage),
+            temporaryHp: saved.temporaryHp,
+            ...(saved.hitDiceTotal !== undefined ? { hitDiceTotal: saved.hitDiceTotal, hitDiceCurrent: saved.hitDiceCurrent } : {}),
+          };
+
+          await prisma.character.update({
+            where: { id: character.id },
+            data: {
+              tokenImagePath: saved.tokenImagePath,
+              sheetData: {
+                ...(character.sheetData as object),
+                combat: nextCombat,
+                attacks: saved.attacks,
+                wildShape: { ...sheet.wildShape, active: false, beastId: null, beastName: "", saved: null },
+              },
+            },
+          });
+
+          data.ac = Number(nextCombat.armorClass);
+          data.maxHp = Number(nextCombat.maxHp);
+          data.hp = Number(nextCombat.currentHp);
+          data.speed = Number(nextCombat.speed);
+        }
+      }
 
       if (req.body.x !== undefined || req.body.y !== undefined) {
         const newX = toInt(req.body.x, combatant.x);

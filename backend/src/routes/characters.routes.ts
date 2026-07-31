@@ -4,6 +4,7 @@ import path from "node:path";
 import fs from "node:fs";
 import { prisma } from "../lib/prisma.js";
 import { getAuthUser } from "../lib/getAuthUser.js";
+import { emitToGame } from "../lib/socket.js";
 
 export const charactersRouter = Router();
 
@@ -65,6 +66,67 @@ function toIntOrFallback(value: unknown, fallback: number) {
   }
 
   return numberValue;
+}
+
+function numberOrFallback(value: unknown, fallback: number) {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return fallback;
+  }
+  return value;
+}
+
+// Payload con la misma forma que usa el tablero de combate (combat.routes.ts),
+// duplicado aquí para no crear un import cruzado entre routers.
+async function getEncounterPayloadForGame(gameId: string) {
+  return prisma.combatEncounter.findUnique({
+    where: { gameId },
+    include: {
+      combatants: {
+        orderBy: [{ initiative: "desc" }, { createdAt: "asc" }],
+        include: {
+          character: {
+            include: { owner: { select: { id: true, name: true, email: true } } },
+          },
+        },
+      },
+    },
+  });
+}
+
+// Forma Salvaje cambia CA/PG/velocidad en la ficha (sheetData.combat), pero el
+// tablero de combate guarda su propia copia en Combatant (tomada una sola vez
+// al empezar el combate). Si el personaje tiene un Combatant en un encuentro
+// activo, hay que empujarle los mismos valores y avisar por socket.
+async function syncActiveCombatants(characterId: string, sheetData: unknown) {
+  const sheet = (sheetData ?? {}) as { combat?: { armorClass?: number; maxHp?: number; currentHp?: number; speed?: number } };
+  const combat = sheet.combat;
+  if (!combat) return;
+
+  const linked = await prisma.combatant.findMany({
+    where: { characterId, encounter: { isActive: true } },
+  });
+
+  const affectedGameIds = new Set<string>();
+
+  for (const combatant of linked) {
+    await prisma.combatant.update({
+      where: { id: combatant.id },
+      data: {
+        ac: numberOrFallback(combat.armorClass, combatant.ac),
+        maxHp: numberOrFallback(combat.maxHp, combatant.maxHp),
+        hp: numberOrFallback(combat.currentHp, combatant.hp),
+        speed: numberOrFallback(combat.speed, combatant.speed),
+      },
+    });
+
+    const encounter = await prisma.combatEncounter.findUnique({ where: { id: combatant.encounterId } });
+    if (encounter) affectedGameIds.add(encounter.gameId);
+  }
+
+  for (const gameId of affectedGameIds) {
+    const payload = await getEncounterPayloadForGame(gameId);
+    emitToGame(gameId, "combat:updated", { encounter: payload });
+  }
 }
 
 function getDefaultSheetData(characterName: string) {
@@ -380,12 +442,22 @@ charactersRouter.put("/characters/:characterId", async (req, res) => {
           req.body.level !== undefined
             ? toIntOrFallback(req.body.level, existingCharacter.level)
             : existingCharacter.level,
+        // Forma Salvaje usa esto para cambiar el token en el mapa de combate
+        // mientras el personaje está transformado, y restaurarlo al revertir.
+        tokenImagePath:
+          req.body.tokenImagePath !== undefined
+            ? toStringOrNull(req.body.tokenImagePath)
+            : existingCharacter.tokenImagePath,
         sheetData:
           req.body.sheetData !== undefined
             ? req.body.sheetData
             : existingCharacter.sheetData,
       },
     });
+
+    if (req.body.syncCombatant === true) {
+      await syncActiveCombatants(character.id, character.sheetData);
+    }
 
     return res.json({
       character,
