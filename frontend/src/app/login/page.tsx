@@ -27,8 +27,8 @@ function LoginForm() {
     return redirect;
   }, [searchParams]);
 
-  const [email, setEmail] = useState("dm@forge.local");
-  const [password, setPassword] = useState("forge1234");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
