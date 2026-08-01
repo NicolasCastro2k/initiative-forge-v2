@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "tsx watch src/main.ts",
-    "start": "node dist/server.js",
+    "start": "node dist/main.js",
     "build": "tsc",
     "seed:classes": "tsx prisma/seed-class-presets.ts",
     "seed:subclasses": "tsx prisma/seed-subclass-presets.ts"
