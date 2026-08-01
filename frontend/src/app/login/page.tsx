@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 
@@ -14,7 +14,7 @@ type LoginResponse = {
   };
 };
 
-export default function LoginPage() {
+function LoginForm() {
   const searchParams = useSearchParams();
 
   const redirectTo = useMemo(() => {
@@ -160,5 +160,13 @@ export default function LoginPage() {
       </p>
       </section>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
   );
 }
