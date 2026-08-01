@@ -9,6 +9,7 @@
 //   GET  /games/:gameId/combat/reachable/:combatantId
 
 import { Router } from "express";
+import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { getAuthUser } from "../lib/getAuthUser.js";
 import { emitToGame } from "../lib/socket.js";
@@ -28,7 +29,7 @@ import {
   distanceFeet,
   type Condition,
   type AbilityName,
-} from "../lib/dnd5e.js";
+} from "../lib/Dnd5e.js";
 
 export const combatActionsRouter = Router();
 
@@ -67,7 +68,7 @@ async function logAction(
   rolls: unknown[] = []
 ) {
   await prisma.combatLog.create({
-    data: { encounterId, round, actorName, action, detail, rolls },
+    data: { encounterId, round, actorName, action, detail, rolls: rolls as Prisma.InputJsonValue },
   });
 }
 
@@ -202,7 +203,9 @@ function getAbilitiesFromRealSheet(sheet: RealSheetData) {
 // Convierte "1d8+3 cortante" → { count: 1, sides: 8, modifier: 3, damageType: "cortante" }
 function parseDamageString(damage: string) {
   const match = damage.match(/(\d+)d(\d+)([+-]\d+)?\s*(.*)?/i);
-  if (!match) return { count: 1, sides: 6, modifier: 0, damageType: damage };
+  if (!match || match[1] === undefined || match[2] === undefined) {
+    return { count: 1, sides: 6, modifier: 0, damageType: damage };
+  }
   return {
     count: parseInt(match[1], 10),
     sides: parseInt(match[2], 10),
@@ -787,8 +790,8 @@ type WildShapeSaved = {
   maxHp: number;
   currentHp: number;
   temporaryHp: number;
-  hitDiceTotal?: string;
-  hitDiceCurrent?: string;
+  hitDiceTotal?: string | undefined;
+  hitDiceCurrent?: string | undefined;
   attacks: unknown[];
   tokenImagePath: string | null;
 };
@@ -943,7 +946,7 @@ combatActionsRouter.post(
 
       await prisma.character.update({
         where: { id: character.id },
-        data: { sheetData: nextSheet, tokenImagePath: beast.tokenImagePath ?? character.tokenImagePath },
+        data: { sheetData: nextSheet as unknown as Prisma.InputJsonValue, tokenImagePath: beast.tokenImagePath ?? character.tokenImagePath },
       });
 
       await prisma.combatant.update({
@@ -1022,7 +1025,7 @@ combatActionsRouter.post(
 
       await prisma.character.update({
         where: { id: character.id },
-        data: { sheetData: nextSheet, tokenImagePath: saved ? saved.tokenImagePath : character.tokenImagePath },
+        data: { sheetData: nextSheet as unknown as Prisma.InputJsonValue, tokenImagePath: saved ? saved.tokenImagePath : character.tokenImagePath },
       });
 
       if (saved) {

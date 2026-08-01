@@ -270,6 +270,9 @@ export function resolveAttack(
 
   if (isHit) {
     const [countStr, rest] = weapon.damageDice.split("d");
+    if (countStr === undefined || rest === undefined) {
+      throw new Error(`Formato de dado de daño inválido: "${weapon.damageDice}"`);
+    }
     const count = parseInt(countStr, 10);
     const sides = parseInt(rest, 10) as DiceType;
 
@@ -421,6 +424,9 @@ export function resolveSpell(
   const dc = spellSaveDc(casterLevel, casterSpellcastingAbility);
 
   const [countStr, rest] = spell.damageDice.split("d");
+  if (countStr === undefined || rest === undefined) {
+    throw new Error(`Formato de dado de daño inválido: "${spell.damageDice}"`);
+  }
   const count = parseInt(countStr, 10);
   const sides = parseInt(rest, 10) as DiceType;
 

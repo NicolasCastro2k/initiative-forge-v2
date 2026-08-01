@@ -6,7 +6,7 @@ function parseCookies(cookieHeader: string): Record<string, string> {
   return Object.fromEntries(
     cookieHeader.split(";").map((pair) => {
       const [key, ...rest] = pair.trim().split("=");
-      return [key.trim(), decodeURIComponent(rest.join("=").trim())];
+      return [(key ?? "").trim(), decodeURIComponent(rest.join("=").trim())];
     })
   );
 }
