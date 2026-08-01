@@ -171,6 +171,31 @@ export default function CombatActionPanel({
   const isActiveTurn = activeCombatant?.id === selectedCombatant?.id;
   const canAct = canControl && (isDm || isActiveTurn);
 
+  // Cargar armas, hechizos y estado de Forma Salvaje del combatiente
+  // seleccionado. Se expone como función aparte (no solo dentro del efecto)
+  // porque también hay que volver a llamarla después de transformar/revertir
+  // Forma Salvaje — si no, el panel queda "congelado" mostrando datos viejos
+  // (sin botón de revertir, usos sin consumir, ataques sin cambiar).
+  async function loadCombatantData(combatantId: string) {
+    const [weaponData, spellData, wildShapeData] = await Promise.all([
+      fetch(`${API_URL}/games/${gameId}/combat/weapons/${combatantId}`, { credentials: "include" })
+        .then((r) => r.json()).catch(() => null),
+      fetch(`${API_URL}/games/${gameId}/combat/spells/${combatantId}`, { credentials: "include" })
+        .then((r) => r.json()).catch(() => null),
+      fetch(`${API_URL}/games/${gameId}/combat/wildshape/${combatantId}`, { credentials: "include" })
+        .then((r) => r.json()).catch(() => null),
+    ]);
+
+    const loadedWeapons = (weaponData?.weapons ?? []) as WeaponData[];
+    const loadedSpells = (spellData?.spells ?? []) as SpellData[];
+    setWeapons(loadedWeapons);
+    setSpells(loadedSpells);
+    setSelectedWeapon(loadedWeapons[0] ?? null);
+    setSelectedSpell(loadedSpells[0] ?? null);
+    setSpellSaveDc(spellData?.spellSaveDc ?? 0);
+    setWildShapeStatus((wildShapeData as WildShapeStatus) ?? { isDruid: false });
+  }
+
   // Cargar armas y hechizos cuando cambia el combatiente
   useEffect(() => {
     if (!selectedCombatant) return;
@@ -178,24 +203,7 @@ export default function CombatActionPanel({
     setLastResult(null);
     setSelectedTargetId("");
     setSelectedTargetIds([]);
-
-    Promise.all([
-      fetch(`${API_URL}/games/${gameId}/combat/weapons/${selectedCombatant.id}`, { credentials: "include" })
-        .then((r) => r.json()).catch(() => null),
-      fetch(`${API_URL}/games/${gameId}/combat/spells/${selectedCombatant.id}`, { credentials: "include" })
-        .then((r) => r.json()).catch(() => null),
-      fetch(`${API_URL}/games/${gameId}/combat/wildshape/${selectedCombatant.id}`, { credentials: "include" })
-        .then((r) => r.json()).catch(() => null),
-    ]).then(([weaponData, spellData, wildShapeData]) => {
-      const loadedWeapons = (weaponData?.weapons ?? []) as WeaponData[];
-      const loadedSpells = (spellData?.spells ?? []) as SpellData[];
-      setWeapons(loadedWeapons);
-      setSpells(loadedSpells);
-      setSelectedWeapon(loadedWeapons[0] ?? null);
-      setSelectedSpell(loadedSpells[0] ?? null);
-      setSpellSaveDc(spellData?.spellSaveDc ?? 0);
-      setWildShapeStatus((wildShapeData as WildShapeStatus) ?? { isDruid: false });
-    });
+    void loadCombatantData(selectedCombatant.id);
   }, [selectedCombatant?.id, gameId]);
 
   // Si cambias a un combatiente que no es druida mientras estabas en la
@@ -414,6 +422,7 @@ export default function CombatActionPanel({
       const text = `${selectedCombatant.name} usa Forma Salvaje → ${beastName}`;
       setLastResult(text);
       onLogEntry(text);
+      await loadCombatantData(selectedCombatant.id);
       onCombatUpdated();
     } catch {
       setError("Error de conexión.");
@@ -440,6 +449,7 @@ export default function CombatActionPanel({
       const text = `${selectedCombatant.name} revierte su Forma Salvaje`;
       setLastResult(text);
       onLogEntry(text);
+      await loadCombatantData(selectedCombatant.id);
       onCombatUpdated();
     } catch {
       setError("Error de conexión.");

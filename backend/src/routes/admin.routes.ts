@@ -1,11 +1,9 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
 import multer from "multer";
-import path from "node:path";
-import fs from "node:fs";
-import crypto from "node:crypto";
 import { prisma } from "../lib/prisma.js";
 import { requireAdmin, requireAuth } from "../lib/requireAuth.js";
+import { uploadImageToSupabase } from "../lib/supabaseStorage.js";
 
 export const adminRouter = Router();
 
@@ -13,21 +11,11 @@ adminRouter.use(requireAuth);
 adminRouter.use(requireAdmin);
 
 // ─── Subida de token para bestias (Forma Salvaje) ──────────────────────────────
-// Mismo patrón que /characters/:characterId/image en characters.routes.ts.
-const beastUploadsDir = path.join(process.cwd(), "uploads", "beasts");
-fs.mkdirSync(beastUploadsDir, { recursive: true });
-
-const beastImageStorage = multer.diskStorage({
-  destination: (_req, _file, callback) => callback(null, beastUploadsDir),
-  filename: (_req, file, callback) => {
-    const extension = path.extname(file.originalname).toLowerCase();
-    const safeName = `${Date.now()}-${crypto.randomUUID()}${extension}`;
-    callback(null, safeName);
-  },
-});
-
+// Antes se guardaba en disco local (multer.diskStorage) — en Render (plan
+// gratis) ese disco se borra en cada redeploy/reinicio, así que ahora se
+// guarda en memoria y se sube a Supabase Storage (ver lib/supabaseStorage.ts).
 const uploadBeastImage = multer({
-  storage: beastImageStorage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (_req, file, callback) => {
     const allowed = ["image/jpeg", "image/png", "image/webp", "image/gif"];
@@ -598,7 +586,15 @@ adminRouter.post("/beasts/:beastId/image", uploadBeastImage.single("image"), asy
       return res.status(400).json({ message: "Debes subir una imagen." });
     }
 
-    const imagePath = `/uploads/beasts/${req.file.filename}`;
+    let imagePath: string;
+    try {
+      imagePath = await uploadImageToSupabase("beasts", req.file);
+    } catch (uploadError) {
+      console.error("Error subiendo token a Supabase:", uploadError);
+      return res.status(500).json({
+        message: uploadError instanceof Error ? uploadError.message : "No se pudo subir el token.",
+      });
+    }
 
     const beast = await prisma.beastPreset.update({
       where: { id: beastId },

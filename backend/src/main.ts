@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import compression from "compression";
 import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
 import { createServer } from "node:http";
@@ -21,7 +22,23 @@ dotenv.config();
 const app = express();
 const httpServer = createServer(app);
 
-app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
+// Comprime todas las respuestas (JSON y estáticos) con gzip/brotli. Los
+// payloads de la ficha, el catálogo de bestias/hechizos y el encuentro de
+// combate son bastante grandes en JSON sin comprimir — esto reduce el
+// tamaño transferido en la mayoría de los endpoints sin tocar nada más.
+app.use(compression());
+
+// Cache-Control largo para /uploads: los nombres de archivo son únicos por
+// subida (timestamp + uuid), así que el mismo nombre siempre apunta al mismo
+// contenido — el navegador puede quedarse con la copia local en vez de
+// pedirla de nuevo (o revalidarla) en cada carga de página.
+app.use(
+  "/uploads",
+  express.static(path.join(process.cwd(), "uploads"), {
+    maxAge: "7d",
+    immutable: true,
+  })
+);
 
 const PORT = Number(process.env.PORT ?? 4000);
 const FRONTEND_URL = process.env.FRONTEND_URL ?? "http://localhost:3000";

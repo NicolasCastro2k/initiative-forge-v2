@@ -87,13 +87,23 @@ export default function GameCharactersPage() {
     setIsLoading(true);
 
     try {
-      const meResponse = await fetch(`${API_URL}/auth/me`, {
-        credentials: "include",
-      });
+      // Las 4 llamadas son independientes entre sí, así que se piden todas
+      // en paralelo en vez de esperar una detrás de otra.
+      const [meResponse, gameResponse, myCharactersResponse, selectedResponse] = await Promise.all([
+        fetch(`${API_URL}/auth/me`, { credentials: "include" }),
+        fetch(`${API_URL}/games/${gameId}`, { credentials: "include" }),
+        fetch(`${API_URL}/characters`, { credentials: "include" }),
+        fetch(`${API_URL}/games/${gameId}/characters`, { credentials: "include" }),
+      ]);
 
-      const meData = await meResponse.json().catch(() => null);
+      const [meData, gameData, myCharactersData, selectedData] = await Promise.all([
+        meResponse.json().catch(() => null),
+        gameResponse.json().catch(() => null),
+        myCharactersResponse.json().catch(() => null),
+        selectedResponse.json().catch(() => null),
+      ]);
 
-      if (meResponse.status === 401) {
+      if (meResponse.status === 401 || gameResponse.status === 401) {
         window.location.href = `/login?redirect=${encodeURIComponent(
           `/games/${gameId}/characters`
         )}`;
@@ -108,19 +118,6 @@ export default function GameCharactersPage() {
       const loadedUser = meData.user as CurrentUser;
       setCurrentUser(loadedUser);
 
-      const gameResponse = await fetch(`${API_URL}/games/${gameId}`, {
-        credentials: "include",
-      });
-
-      const gameData = await gameResponse.json().catch(() => null);
-
-      if (gameResponse.status === 401) {
-        window.location.href = `/login?redirect=${encodeURIComponent(
-          `/games/${gameId}/characters`
-        )}`;
-        return;
-      }
-
       if (!gameResponse.ok) {
         setError(gameData?.message ?? "No se pudo cargar la partida.");
         return;
@@ -134,14 +131,6 @@ export default function GameCharactersPage() {
 
       setGame(loadedGame);
 
-      const myCharactersResponse = await fetch(`${API_URL}/characters`, {
-        credentials: "include",
-      });
-
-      const myCharactersData = await myCharactersResponse
-        .json()
-        .catch(() => null);
-
       if (!myCharactersResponse.ok) {
         setError(
           myCharactersData?.message ?? "No se pudieron cargar tus personajes."
@@ -153,15 +142,6 @@ export default function GameCharactersPage() {
         []) as Character[];
 
       setMyCharacters(loadedMyCharacters);
-
-      const selectedResponse = await fetch(
-        `${API_URL}/games/${gameId}/characters`,
-        {
-          credentials: "include",
-        }
-      );
-
-      const selectedData = await selectedResponse.json().catch(() => null);
 
       if (!selectedResponse.ok) {
         setError(

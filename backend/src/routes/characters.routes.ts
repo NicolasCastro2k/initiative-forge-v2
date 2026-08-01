@@ -1,33 +1,17 @@
 import { Router } from "express";
 import multer from "multer";
-import path from "node:path";
-import fs from "node:fs";
 import { prisma } from "../lib/prisma.js";
 import { getAuthUser } from "../lib/getAuthUser.js";
 import { emitToGame } from "../lib/socket.js";
+import { uploadImageToSupabase } from "../lib/supabaseStorage.js";
 
 export const charactersRouter = Router();
 
-const uploadsRoot = path.join(process.cwd(), "uploads");
-const characterUploadsDir = path.join(uploadsRoot, "characters");
-
-fs.mkdirSync(characterUploadsDir, {
-  recursive: true,
-});
-
-const imageStorage = multer.diskStorage({
-  destination: (_req, _file, callback) => {
-    callback(null, characterUploadsDir);
-  },
-  filename: (_req, file, callback) => {
-    const extension = path.extname(file.originalname).toLowerCase();
-    const safeName = `${Date.now()}-${crypto.randomUUID()}${extension}`;
-    callback(null, safeName);
-  },
-});
-
+// Antes esto guardaba en disco local (multer.diskStorage) — en Render (plan
+// gratis) ese disco se borra en cada redeploy/reinicio, así que ahora se
+// guarda el archivo en memoria y se sube a Supabase Storage.
 const uploadCharacterImage = multer({
-  storage: imageStorage,
+  storage: multer.memoryStorage(),
   limits: {
     fileSize: 5 * 1024 * 1024,
   },
@@ -504,7 +488,15 @@ charactersRouter.post(
         });
       }
 
-      const imagePath = `/uploads/characters/${req.file.filename}`;
+      let imagePath: string;
+      try {
+        imagePath = await uploadImageToSupabase("characters", req.file);
+      } catch (uploadError) {
+        console.error("Error subiendo imagen a Supabase:", uploadError);
+        return res.status(500).json({
+          message: uploadError instanceof Error ? uploadError.message : "No se pudo subir la imagen.",
+        });
+      }
 
       const character = await prisma.character.update({
         where: {

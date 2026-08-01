@@ -103,10 +103,24 @@ export default function GameDetailPage() {
     setError("");
 
     try {
-      const meRes = await fetch(`${API_URL}/auth/me`, { credentials: "include" });
-      const meData = await meRes.json().catch(() => null);
+      // Las 4 llamadas son independientes entre sí (ninguna necesita el
+      // resultado de otra para armar su URL), así que se piden en paralelo
+      // en vez de una detrás de otra.
+      const [meRes, gameRes, mapsRes, charsRes] = await Promise.all([
+        fetch(`${API_URL}/auth/me`, { credentials: "include" }),
+        fetch(`${API_URL}/games/${gameId}`, { credentials: "include" }),
+        fetch(`${API_URL}/games/${gameId}/maps`, { credentials: "include" }),
+        fetch(`${API_URL}/games/${gameId}/characters`, { credentials: "include" }),
+      ]);
 
-      if (meRes.status === 401) {
+      const [meData, gameData, mapsData, charsData] = await Promise.all([
+        meRes.json().catch(() => null),
+        gameRes.json().catch(() => null),
+        mapsRes.json().catch(() => null),
+        charsRes.json().catch(() => null),
+      ]);
+
+      if (meRes.status === 401 || gameRes.status === 401) {
         window.location.href = `/login?redirect=${encodeURIComponent(`/games/${gameId}`)}`;
         return;
       }
@@ -116,34 +130,20 @@ export default function GameDetailPage() {
         setIsLoading(false);
         return;
       }
-
       setCurrentUser(meData.user as CurrentUser);
-
-      const gameRes = await fetch(`${API_URL}/games/${gameId}`, { credentials: "include" });
-      const gameData = await gameRes.json().catch(() => null);
-
-      if (gameRes.status === 401) {
-        window.location.href = `/login?redirect=${encodeURIComponent(`/games/${gameId}`)}`;
-        return;
-      }
 
       if (!gameRes.ok) {
         setError(gameData?.message ?? "No se pudo cargar la partida.");
         setIsLoading(false);
         return;
       }
-
       setGame(gameData.game as GameDetail);
       setRole(gameData.role as "DM" | "PLAYER");
 
-      const mapsRes = await fetch(`${API_URL}/games/${gameId}/maps`, { credentials: "include" });
-      const mapsData = await mapsRes.json().catch(() => null);
       if (mapsRes.ok) {
         setMaps((mapsData.maps ?? []) as BattleMap[]);
       }
 
-      const charsRes = await fetch(`${API_URL}/games/${gameId}/characters`, { credentials: "include" });
-      const charsData = await charsRes.json().catch(() => null);
       if (charsRes.ok) {
         setSelections((charsData.selections ?? []) as GameCharacterSelection[]);
       }

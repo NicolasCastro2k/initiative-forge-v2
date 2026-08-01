@@ -52,6 +52,13 @@ type SpellPreset = {
 };
 type EquipmentItem = { quantity: number; name: string };
 type FeatureItem = { name: string; description: string };
+type PendingLevelChoice = {
+  type: "ABILITY_SCORE_IMPROVEMENT" | "SUBCLASS" | string;
+  level: number;
+  message: string;
+  classId?: string | null;
+  createdAt: string;
+};
 
 type SheetData = {
   meta: { locked: boolean };
@@ -87,12 +94,17 @@ type SheetData = {
     proficiencyBonus: number;
     savingThrows: Record<AbilityKey, boolean>;
     skills: Record<string, boolean>;
+    // Subconjunto de `skills` elegido específicamente desde la lista de la
+    // clase (independiente de lo que ya otorgue el trasfondo), para que
+    // cambiar de clase o de trasfondo no se pisen entre sí.
+    classSkillChoices: string[];
     languages: string[];
     tools: string[];
     armor: string[];
     weapons: string[];
   };
   features: FeatureItem[];
+  pendingLevelChoices: PendingLevelChoice[];
   spells: {
     spellcastingClass: string;
     spellcastingAbility: string;
@@ -205,8 +217,10 @@ function getDefaultSheetData(characterName: string): SheetData {
         stealth: false, survival: false,
       },
       languages: [], tools: [], armor: [], weapons: [],
+      classSkillChoices: [],
     },
     features: [],
+    pendingLevelChoices: [],
     spells: {
       spellcastingClass: "", spellcastingAbility: "", spellSaveDc: 0, spellAttackBonus: 0,
       slots: Object.fromEntries(Array.from({ length: 9 }, (_, i) => [String(i + 1), { total: 0, expended: 0 }])),
@@ -261,8 +275,10 @@ function normalizeSheetData(value: unknown, characterName: string): SheetData {
       tools: Array.isArray(rawProf.tools) ? rawProf.tools as string[] : [],
       armor: Array.isArray(rawProf.armor) ? rawProf.armor as string[] : [],
       weapons: Array.isArray(rawProf.weapons) ? rawProf.weapons as string[] : [],
+      classSkillChoices: Array.isArray(rawProf.classSkillChoices) ? rawProf.classSkillChoices as string[] : [],
     },
     features: Array.isArray(raw.features) ? raw.features as FeatureItem[] : [],
+    pendingLevelChoices: Array.isArray(raw.pendingLevelChoices) ? raw.pendingLevelChoices as PendingLevelChoice[] : [],
     spells: {
       ...defaults.spells,
       ...rawSpells,
@@ -436,6 +452,15 @@ export default function CharacterSheetPage() {
   const selectedClass = classes.find((c) => c.id === selectedClassId) ?? null;
   const availableSubclasses = selectedClass?.subclasses ?? [];
 
+  // Habilidades que otorga el trasfondo activo — se usa para no "robarle" un
+  // cupo de elección de clase a una habilidad que ya viene por trasfondo, y
+  // para no desmarcar por error una habilidad elegida por clase al cambiar
+  // de trasfondo.
+  const activeBackground = backgrounds.find((b) => b.id === selectedBackgroundId) ?? null;
+  const backgroundGrantedKeys = new Set(
+    (activeBackground?.skillProficiencies ?? []).map((s) => matchSkillKey(s)).filter((k): k is string => Boolean(k))
+  );
+
   // Nivel mínimo para elegir subclase — usamos el nivel más bajo de sus rasgos, o 3 por defecto
   const subclassUnlockLevel = useMemo(() => {
     if (!selectedClass || availableSubclasses.length === 0) return null;
@@ -446,6 +471,64 @@ export default function CharacterSheetPage() {
   }, [selectedClass, availableSubclasses]);
 
   const canPickSubclass = subclassUnlockLevel !== null && sheetData.identity.level >= subclassUnlockLevel;
+
+  // Mismos niveles de Mejora de Puntuación de Característica (ASI) que usa
+  // el backend al subir de nivel (backend/src/routes/games.routes.ts,
+  // getAsiLevels) — se duplica acá porque este campo "Nivel" se puede editar
+  // directamente desde la ficha, sin pasar por ese endpoint.
+  function getAsiLevels(classId: string | null) {
+    if (classId === "fighter") return [4, 6, 8, 12, 14, 16, 19];
+    if (classId === "rogue") return [4, 8, 10, 12, 16, 19];
+    return [4, 8, 12, 16, 19];
+  }
+
+  // Al editar el nivel a mano, detecta si se cruzó un umbral de mejora de
+  // característica o de elección de subclase que todavía no esté pendiente
+  // ni ya resuelto, y lo agrega a pendingLevelChoices — si no, esos umbrales
+  // solo se generaban desde el botón de "Subir de nivel" del DM, que nadie
+  // usa cuando se edita el nivel directo en la ficha.
+  function handleLevelChange(newLevel: number) {
+    const oldLevel = sheetData.identity.level;
+    const nextPending = [...sheetData.pendingLevelChoices];
+
+    if (newLevel > oldLevel) {
+      if (
+        subclassUnlockLevel !== null &&
+        newLevel >= subclassUnlockLevel &&
+        !selectedSubclassId &&
+        !nextPending.some((c) => c.type === "SUBCLASS")
+      ) {
+        nextPending.push({
+          type: "SUBCLASS",
+          level: newLevel,
+          classId: selectedClassId || null,
+          message: "Elegir subclase.",
+          createdAt: new Date().toISOString(),
+        });
+      }
+
+      getAsiLevels(selectedClassId || null).forEach((asiLevel) => {
+        if (
+          asiLevel > oldLevel &&
+          asiLevel <= newLevel &&
+          !nextPending.some((c) => c.type === "ABILITY_SCORE_IMPROVEMENT" && c.level === asiLevel)
+        ) {
+          nextPending.push({
+            type: "ABILITY_SCORE_IMPROVEMENT",
+            level: asiLevel,
+            message: `Pendiente mejora de característica o dote (nivel ${asiLevel}).`,
+            createdAt: new Date().toISOString(),
+          });
+        }
+      });
+    }
+
+    void persistSheetData({
+      ...sheetData,
+      identity: { ...sheetData.identity, level: newLevel },
+      pendingLevelChoices: nextPending,
+    });
+  }
 
   // ─── Auto-cálculo: Bonif. competencia según nivel ──────────────────────────
   const computedProficiencyBonus = useMemo(
@@ -676,22 +759,17 @@ export default function CharacterSheetPage() {
       );
 
       // Las habilidades de clase son una ELECCIÓN del jugador, no se autocompletan.
-      // Si la clase anterior otorgaba habilidades elegidas que ya no son válidas
-      // para la nueva, se destildan para que no queden "colgadas".
+      // Al cambiar de clase, se reinician las elecciones de clase (empiezas de
+      // cero con la nueva lista) — pero si una de esas habilidades también la
+      // otorga el trasfondo activo, no se apaga (sigue siendo tuya por esa vía).
+      const activeBg = backgrounds.find((b) => b.id === selectedBackgroundId) ?? null;
+      const bgKeys = new Set(
+        (activeBg?.skillProficiencies ?? []).map((s) => matchSkillKey(s)).filter((k): k is string => Boolean(k))
+      );
       const newSkills = { ...prev.proficiencies.skills };
-      if (previousClass) {
-        const previousKeys = new Set(
-          previousClass.skillChoices.map((s) => matchSkillKey(s)).filter((k): k is string => Boolean(k))
-        );
-        const newValidKeys = new Set(
-          cls.skillChoices.map((s) => matchSkillKey(s)).filter((k): k is string => Boolean(k))
-        );
-        previousKeys.forEach((key) => {
-          if (!newValidKeys.has(key)) {
-            newSkills[key] = false;
-          }
-        });
-      }
+      prev.proficiencies.classSkillChoices.forEach((key) => {
+        if (!bgKeys.has(key)) newSkills[key] = false;
+      });
 
       return {
         ...prev,
@@ -710,6 +788,7 @@ export default function CharacterSheetPage() {
           weapons: newWeapons,
           tools: newTools,
           skills: newSkills,
+          classSkillChoices: [],
         },
         spells: {
           ...prev.spells,
@@ -773,14 +852,17 @@ export default function CharacterSheetPage() {
       const newSkills = { ...prev.proficiencies.skills };
 
       // 1. Destildar las habilidades que otorgaba el trasfondo anterior
-      //    (si había uno), a menos que el trasfondo nuevo también las otorgue.
+      //    (si había uno), a menos que el trasfondo nuevo también las otorgue
+      //    O que el jugador las haya elegido explícitamente por clase.
       const newKeys = new Set(
         (bg?.skillProficiencies ?? []).map((s) => matchSkillKey(s)).filter((k): k is string => Boolean(k))
       );
       if (previousBg) {
         previousBg.skillProficiencies.forEach((s) => {
           const key = matchSkillKey(s);
-          if (key && !newKeys.has(key)) newSkills[key] = false;
+          if (key && !newKeys.has(key) && !prev.proficiencies.classSkillChoices.includes(key)) {
+            newSkills[key] = false;
+          }
         });
       }
 
@@ -820,9 +902,10 @@ export default function CharacterSheetPage() {
 
   // Guarda sheetData + (opcionalmente) el token del personaje con una
   // petición liviana — NO usa saveCharacter() porque esa función bloquea
-  // clase/raza/atributos/habilidades en el primer guardado, y transformarse
-  // no debería disparar ese bloqueo.
-  async function persistWildShape(nextSheetData: SheetData, tokenImagePath?: string | null) {
+  // clase/raza/atributos/habilidades en el primer guardado. La usan Forma
+  // Salvaje y la resolución de mejoras de nivel pendientes (ninguna de las
+  // dos debería disparar ese bloqueo).
+  async function persistSheetData(nextSheetData: SheetData, tokenImagePath?: string | null, extra?: Record<string, unknown>) {
     if (!characterId) return;
     setSheetData(nextSheetData);
     try {
@@ -834,6 +917,7 @@ export default function CharacterSheetPage() {
           sheetData: nextSheetData,
           syncCombatant: true,
           ...(tokenImagePath !== undefined ? { tokenImagePath } : {}),
+          ...(extra ?? {}),
         }),
       });
       const data = await response.json().catch(() => null);
@@ -886,7 +970,7 @@ export default function CharacterSheetPage() {
       },
     };
 
-    void persistWildShape(next, beast.tokenImagePath ?? null);
+    void persistSheetData(next, beast.tokenImagePath ?? null);
   }
 
   // excessDamage: si la reversión ocurre porque los PG de la bestia llegaron
@@ -894,7 +978,7 @@ export default function CharacterSheetPage() {
   function revertWildShape(excessDamage = 0) {
     const saved = sheetData.wildShape.saved;
     if (!saved) {
-      void persistWildShape({ ...sheetData, wildShape: { ...sheetData.wildShape, active: false, beastId: null, beastName: "" } });
+      void persistSheetData({ ...sheetData, wildShape: { ...sheetData.wildShape, active: false, beastId: null, beastName: "" } });
       return;
     }
     const next: SheetData = {
@@ -912,11 +996,64 @@ export default function CharacterSheetPage() {
       attacks: saved.attacks,
       wildShape: { ...sheetData.wildShape, active: false, beastId: null, beastName: "", saved: null },
     };
-    void persistWildShape(next, saved.tokenImagePath);
+    void persistSheetData(next, saved.tokenImagePath);
   }
 
   function restoreWildShapeUses() {
-    void persistWildShape({ ...sheetData, wildShape: { ...sheetData.wildShape, usesRemaining: sheetData.wildShape.usesMax } });
+    void persistSheetData({ ...sheetData, wildShape: { ...sheetData.wildShape, usesRemaining: sheetData.wildShape.usesMax } });
+  }
+
+  // ─── Mejoras de nivel pendientes (ABILITY_SCORE_IMPROVEMENT / SUBCLASS) ────
+  // El backend marca estas mejoras como pendientes al subir de nivel
+  // (POST .../level-up), pero no hay otro lugar en la ficha donde resolverlas
+  // — y los inputs de atributos/subclase quedan bloqueados tras el primer
+  // guardado. Este flujo es la única vía autorizada para tocarlos después.
+  const pendingAsi = sheetData.pendingLevelChoices.find((c) => c.type === "ABILITY_SCORE_IMPROVEMENT") ?? null;
+  const pendingSubclassChoice = sheetData.pendingLevelChoices.find((c) => c.type === "SUBCLASS") ?? null;
+
+  const [asiAllocation, setAsiAllocation] = useState<Record<AbilityKey, number>>({
+    strength: 0, dexterity: 0, constitution: 0, intelligence: 0, wisdom: 0, charisma: 0,
+  });
+  const asiPointsUsed = (Object.values(asiAllocation) as number[]).reduce((sum, v) => sum + v, 0);
+
+  useEffect(() => {
+    setAsiAllocation({ strength: 0, dexterity: 0, constitution: 0, intelligence: 0, wisdom: 0, charisma: 0 });
+  }, [pendingAsi?.createdAt]);
+
+  function adjustAsiPoint(key: AbilityKey, delta: 1 | -1) {
+    setAsiAllocation((prev) => {
+      const nextValue = prev[key] + delta;
+      if (nextValue < 0 || nextValue > 2) return prev;
+      if (delta > 0 && asiPointsUsed >= 2) return prev;
+      if (delta > 0 && sheetData.abilities[key] + nextValue > 20) return prev;
+      return { ...prev, [key]: nextValue };
+    });
+  }
+
+  function applyAbilityScoreImprovement() {
+    if (!pendingAsi || asiPointsUsed !== 2) return;
+
+    const nextAbilities = { ...sheetData.abilities };
+    (Object.keys(asiAllocation) as AbilityKey[]).forEach((key) => {
+      nextAbilities[key] = Math.min(20, nextAbilities[key] + asiAllocation[key]);
+    });
+
+    const nextPending = sheetData.pendingLevelChoices.filter((c) => c !== pendingAsi);
+    void persistSheetData({ ...sheetData, abilities: nextAbilities, pendingLevelChoices: nextPending });
+  }
+
+  function resolvePendingSubclass(subclassId: string) {
+    if (!pendingSubclassChoice) return;
+    const sub = availableSubclasses.find((s) => s.id === subclassId);
+    if (!sub) return;
+
+    setSelectedSubclassId(subclassId);
+    const nextPending = sheetData.pendingLevelChoices.filter((c) => c !== pendingSubclassChoice);
+    void persistSheetData(
+      { ...sheetData, identity: { ...sheetData.identity, subclassName: sub.name }, pendingLevelChoices: nextPending },
+      undefined,
+      { subclassId },
+    );
   }
 
   // Enganchado desde el input de "PG actuales": si estás transformado y los
@@ -1107,6 +1244,75 @@ export default function CharacterSheetPage() {
         {error && <div className="mb-6 rounded-2xl border border-red-500/40 bg-red-500/10 p-4 text-red-200">{error}</div>}
         {message && <div className="mb-6 rounded-2xl border border-green-500/40 bg-green-500/10 p-4 text-green-200">{message}</div>}
 
+        {(pendingAsi || pendingSubclassChoice) && (
+          <section className="mb-6 space-y-4 rounded-3xl border border-yellow-500/40 bg-yellow-500/10 p-6 shadow-2xl">
+            <h2 className="text-xl font-black text-yellow-200">⬆ Mejoras de nivel pendientes</h2>
+
+            {pendingSubclassChoice && (
+              <div className="rounded-2xl border border-yellow-500/30 bg-zinc-950/60 p-4">
+                <p className="text-sm font-bold text-yellow-100">{pendingSubclassChoice.message}</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <select
+                    value=""
+                    onChange={(e) => e.target.value && resolvePendingSubclass(e.target.value)}
+                    className="rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white outline-none focus:border-yellow-400"
+                  >
+                    <option value="">— Elegir subclase —</option>
+                    {availableSubclasses.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
+                </div>
+              </div>
+            )}
+
+            {pendingAsi && (
+              <div className="rounded-2xl border border-yellow-500/30 bg-zinc-950/60 p-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-bold text-yellow-100">{pendingAsi.message}</p>
+                  <span className="rounded-full border border-yellow-500/40 px-2.5 py-0.5 text-xs font-bold text-yellow-200">
+                    {asiPointsUsed}/2 puntos
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-yellow-200/70">
+                  Reparte 2 puntos entre tus características (máx. +2 a una sola, tope 20).
+                </p>
+
+                <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-3">
+                  {abilityLabels.map((ability) => (
+                    <div key={ability.key} className="flex items-center justify-between rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2">
+                      <div>
+                        <p className="text-xs font-bold text-zinc-400">{ability.short}</p>
+                        <p className="text-sm font-black text-white">
+                          {sheetData.abilities[ability.key]}
+                          {asiAllocation[ability.key] > 0 && (
+                            <span className="text-yellow-300"> +{asiAllocation[ability.key]}</span>
+                          )}
+                        </p>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <button type="button" onClick={() => adjustAsiPoint(ability.key, 1)}
+                          disabled={asiPointsUsed >= 2 || asiAllocation[ability.key] >= 2 || sheetData.abilities[ability.key] + asiAllocation[ability.key] >= 20}
+                          className="rounded-md border border-zinc-700 px-2 text-xs font-bold text-zinc-200 transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40">
+                          +
+                        </button>
+                        <button type="button" onClick={() => adjustAsiPoint(ability.key, -1)}
+                          disabled={asiAllocation[ability.key] <= 0}
+                          className="rounded-md border border-zinc-700 px-2 text-xs font-bold text-zinc-200 transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40">
+                          −
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <button type="button" onClick={applyAbilityScoreImprovement} disabled={asiPointsUsed !== 2}
+                  className="mt-4 w-full rounded-xl bg-yellow-500 px-4 py-3 font-black text-zinc-950 transition hover:bg-yellow-400 disabled:cursor-not-allowed disabled:opacity-50">
+                  Confirmar mejora
+                </button>
+              </div>
+            )}
+          </section>
+        )}
+
         <section className="grid gap-6 xl:grid-cols-[300px_1fr]">
 
           {/* Columna izquierda */}
@@ -1198,7 +1404,7 @@ export default function CharacterSheetPage() {
                 <TextField label="Jugador" value={sheetData.identity.playerName}
                   onChange={(v) => update({ ...sheetData, identity: { ...sheetData.identity, playerName: v } })} />
                 <NumberField label="Nivel" value={sheetData.identity.level}
-                  onChange={(v) => update({ ...sheetData, identity: { ...sheetData.identity, level: v } })} />
+                  onChange={handleLevelChange} />
 
                 {/* Clase — selector de DB */}
                 <div>
@@ -1301,7 +1507,7 @@ export default function CharacterSheetPage() {
                     const validKeys = selectedClass.skillChoices
                       .map((s) => matchSkillKey(s))
                       .filter((k): k is string => Boolean(k));
-                    const chosenCount = validKeys.filter((k) => sheetData.proficiencies.skills[k]).length;
+                    const chosenCount = sheetData.proficiencies.classSkillChoices.filter((k) => validKeys.includes(k)).length;
                     const limitReached = chosenCount >= selectedClass.skillChoiceCount;
 
                     return (
@@ -1315,29 +1521,36 @@ export default function CharacterSheetPage() {
                             if (!key) return (
                               <p key={rawName} className="text-xs text-zinc-500">{rawName} (sin mapeo)</p>
                             );
-                            const isChecked = Boolean(sheetData.proficiencies.skills[key]);
+                            const isChosenByClass = sheetData.proficiencies.classSkillChoices.includes(key);
+                            const isFromBackground = backgroundGrantedKeys.has(key) && !isChosenByClass;
                             const label = skillLabels.find((s) => s.key === key)?.label ?? rawName;
                             return (
                               <label key={key} className={[
                                 "flex cursor-pointer items-center gap-2 text-xs",
-                                isChecked ? "text-sky-200" : "text-zinc-400",
+                                isChosenByClass ? "text-sky-200" : isFromBackground ? "text-zinc-500" : "text-zinc-400",
                               ].join(" ")}>
                                 <input
                                   type="checkbox"
-                                  checked={isChecked}
-                                  disabled={!isChecked && limitReached}
-                                  onChange={(e) =>
+                                  checked={isChosenByClass}
+                                  disabled={isFromBackground || (!isChosenByClass && limitReached)}
+                                  onChange={(e) => {
+                                    const nextChoices = e.target.checked
+                                      ? [...sheetData.proficiencies.classSkillChoices, key]
+                                      : sheetData.proficiencies.classSkillChoices.filter((k) => k !== key);
                                     update({
                                       ...sheetData,
                                       proficiencies: {
                                         ...sheetData.proficiencies,
-                                        skills: { ...sheetData.proficiencies.skills, [key]: e.target.checked },
+                                        classSkillChoices: nextChoices,
+                                        // Si se destilda y ninguna otra fuente (trasfondo) la
+                                        // sigue otorgando, recién ahí se apaga la competencia.
+                                        skills: { ...sheetData.proficiencies.skills, [key]: e.target.checked || backgroundGrantedKeys.has(key) },
                                       },
-                                    })
-                                  }
+                                    });
+                                  }}
                                   className="accent-sky-400"
                                 />
-                                {label}
+                                {label}{isFromBackground ? " (trasfondo)" : ""}
                               </label>
                             );
                           })}

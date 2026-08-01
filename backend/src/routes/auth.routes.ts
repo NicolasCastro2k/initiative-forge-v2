@@ -7,6 +7,19 @@ export const authRouter = Router();
 
 const COOKIE_NAME = "initiative_forge_session";
 
+// En local, frontend y backend viven en localhost (mismo "site" a fines de
+// cookies) y por lo general sin HTTPS, así que sirve `sameSite: "lax"` +
+// `secure: false`. En producción, Vercel y Render son dominios DISTINTOS
+// (cross-site) y ambos usan HTTPS — ahí la cookie necesita
+// `sameSite: "none"` + `secure: true`, si no el navegador la descarta y el
+// login "funciona" (200 OK) pero la sesión nunca queda guardada.
+const isProduction = process.env.NODE_ENV === "production";
+const sessionCookieOptions = {
+  httpOnly: true,
+  sameSite: (isProduction ? "none" : "lax") as "none" | "lax",
+  secure: isProduction,
+};
+
 function getIsAdmin(email: string) {
   const adminEmails = (process.env.ADMIN_EMAILS ?? "")
     .split(",")
@@ -53,9 +66,7 @@ authRouter.post("/login", async (req, res) => {
   const token = createAuthToken(publicUser);
 
   res.cookie(COOKIE_NAME, token, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: false,
+    ...sessionCookieOptions,
     maxAge: 1000 * 60 * 60 * 24 * 7,
   });
 
@@ -69,6 +80,7 @@ authRouter.post("/login", async (req, res) => {
 
 authRouter.post("/logout", (_req, res) => {
   res.clearCookie(COOKIE_NAME, {
+    ...sessionCookieOptions,
     path: "/",
   });
 

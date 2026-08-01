@@ -34,9 +34,13 @@ export default function DashboardPage() {
   useEffect(() => {
     async function loadDashboard() {
       try {
-        const meResponse = await fetch(`${API_URL}/auth/me`, {
-          credentials: "include",
-        });
+        // Antes se esperaba /auth/me y RECIÉN DESPUÉS se pedía /games (dos
+        // round-trips en serie). Ambas piden lo mismo (la cookie de sesión),
+        // así que no dependen una de la otra: se piden en paralelo.
+        const [meResponse, gamesResponse] = await Promise.all([
+          fetch(`${API_URL}/auth/me`, { credentials: "include" }),
+          fetch(`${API_URL}/games`, { credentials: "include" }),
+        ]);
 
         if (!meResponse.ok) {
           window.location.href = "/login";
@@ -45,10 +49,6 @@ export default function DashboardPage() {
 
         const meData = await meResponse.json();
         setUser(meData.user);
-
-        const gamesResponse = await fetch(`${API_URL}/games`, {
-          credentials: "include",
-        });
 
         if (gamesResponse.ok) {
           const gamesData = await gamesResponse.json();
