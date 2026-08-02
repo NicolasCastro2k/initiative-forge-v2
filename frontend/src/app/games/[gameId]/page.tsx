@@ -41,15 +41,38 @@ type BattleMapSummary = {
   updatedAt: string;
 };
 
+type Character = {
+  id: string;
+  name: string;
+  level: number;
+  tokenImagePath: string | null;
+};
+
+type GameCharacterSelection = {
+  id: string;
+  userId: string;
+  characterId: string;
+  isActive: boolean;
+  character: Character;
+};
+
+function getImageUrl(path: string | null) {
+  if (!path) return "";
+  return path.startsWith("http") ? path : `${API_URL}${path}`;
+}
+
 export default function GamePage() {
   const params = useParams<{ gameId: string }>();
   const gameId = params.gameId;
 
   const [game, setGame] = useState<GameDetail | null>(null);
   const [maps, setMaps] = useState<BattleMapSummary[]>([]);
+  const [selections, setSelections] = useState<GameCharacterSelection[]>([]);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   useEffect(() => {
     async function loadGamePage() {
@@ -85,6 +108,21 @@ export default function GamePage() {
         if (mapsResponse.ok) {
           setMaps(mapsData.maps ?? []);
         }
+
+        const charsResponse = await fetch(
+          `${API_URL}/games/${gameId}/characters`,
+          { credentials: "include" }
+        );
+
+        const charsData = await charsResponse.json().catch(() => null);
+
+        if (charsResponse.ok) {
+          setSelections(
+            ((charsData.selections ?? []) as GameCharacterSelection[]).filter(
+              (s) => s.isActive
+            )
+          );
+        }
       } catch {
         setError("No se pudo conectar con el backend.");
       } finally {
@@ -104,6 +142,39 @@ export default function GamePage() {
     setTimeout(() => {
       setCopied(false);
     }, 2000);
+  }
+
+  async function deleteGame() {
+    if (!game) return;
+
+    const confirmed = window.confirm(
+      `¿Eliminar la partida "${game.name}"? Esta acción no se puede deshacer y se perderán mapas, combates y personajes seleccionados.`
+    );
+
+    if (!confirmed) return;
+
+    setDeleteError("");
+    setIsDeleting(true);
+
+    try {
+      const response = await fetch(`${API_URL}/games/${game.id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        setDeleteError(data?.message ?? "No se pudo eliminar la partida.");
+        return;
+      }
+
+      window.location.href = "/dashboard";
+    } catch {
+      setDeleteError("No se pudo conectar con el backend.");
+    } finally {
+      setIsDeleting(false);
+    }
   }
 
   if (isLoading) {
@@ -254,25 +325,57 @@ export default function GamePage() {
               <h2 className="text-2xl font-black">Miembros</h2>
 
               <div className="mt-5 divide-y divide-zinc-800 overflow-hidden rounded-2xl border border-zinc-800">
-                {game.members.map((member) => (
-                  <div
-                    key={member.id}
-                    className="flex flex-col gap-2 bg-zinc-950 p-4 sm:flex-row sm:items-center sm:justify-between"
-                  >
-                    <div>
-                      <p className="font-bold text-white">
-                        {member.user.name}
-                      </p>
-                      <p className="text-sm text-zinc-400">
-                        {member.user.email}
-                      </p>
-                    </div>
+                {game.members.map((member) => {
+                  const selection = selections.find(
+                    (s) => s.userId === member.user.id
+                  );
+                  const character = selection?.character;
+                  const tokenUrl = getImageUrl(character?.tokenImagePath ?? null);
 
-                    <span className="w-fit rounded-full border border-yellow-500/40 bg-yellow-500/10 px-3 py-1 text-xs font-bold text-yellow-300">
-                      {member.role === "DM" ? "DM" : "Jugador"}
-                    </span>
-                  </div>
-                ))}
+                  return (
+                    <div
+                      key={member.id}
+                      className="flex flex-col gap-3 bg-zinc-950 p-4 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-zinc-700 bg-zinc-800 text-xs font-black text-zinc-400">
+                          {tokenUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={tokenUrl}
+                              alt={character?.name ?? member.user.name}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            member.user.name.slice(0, 1).toUpperCase()
+                          )}
+                        </div>
+
+                        <div>
+                          <p className="font-bold text-white">
+                            {member.user.name}
+                          </p>
+                          <p className="text-sm text-zinc-400">
+                            {member.user.email}
+                          </p>
+                          {character ? (
+                            <p className="mt-1 text-sm text-yellow-300">
+                              {character.name} · Nivel {character.level}
+                            </p>
+                          ) : member.role !== "DM" ? (
+                            <p className="mt-1 text-sm text-zinc-500">
+                              Sin personaje seleccionado
+                            </p>
+                          ) : null}
+                        </div>
+                      </div>
+
+                      <span className="w-fit rounded-full border border-yellow-500/40 bg-yellow-500/10 px-3 py-1 text-xs font-bold text-yellow-300">
+                        {member.role === "DM" ? "DM" : "Jugador"}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </section>
           </div>
@@ -335,6 +438,29 @@ export default function GamePage() {
                 </a>
               </div>
             </section>
+
+            {isDm ? (
+              <section className="rounded-3xl border border-red-500/30 bg-zinc-900 p-6 shadow-2xl">
+                <h2 className="text-xl font-black text-red-300">Zona de peligro</h2>
+
+                <p className="mt-2 text-sm text-zinc-400">
+                  Eliminar la partida es permanente: se pierden mapas, combates y personajes seleccionados.
+                </p>
+
+                <button
+                  type="button"
+                  onClick={deleteGame}
+                  disabled={isDeleting}
+                  className="mt-4 w-full rounded-xl border border-red-500 px-4 py-3 font-bold text-red-300 transition hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isDeleting ? "Eliminando..." : "Eliminar partida"}
+                </button>
+
+                {deleteError ? (
+                  <p className="mt-3 text-sm text-red-300">{deleteError}</p>
+                ) : null}
+              </section>
+            ) : null}
           </aside>
         </section>
       </div>
