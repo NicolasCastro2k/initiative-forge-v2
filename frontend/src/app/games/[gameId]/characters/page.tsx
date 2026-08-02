@@ -90,7 +90,7 @@ export default function GameCharactersPage() {
       // Las 4 llamadas son independientes entre sí, así que se piden todas
       // en paralelo en vez de esperar una detrás de otra.
       const [meResponse, gameResponse, myCharactersResponse, selectedResponse] = await Promise.all([
-        fetch(`${API_URL}/auth/me`, { credentials: "include" }),
+        fetch(`${API_URL}/auth/me`, { credentials: "include", cache: "no-store" }),
         fetch(`${API_URL}/games/${gameId}`, { credentials: "include" }),
         fetch(`${API_URL}/characters`, { credentials: "include" }),
         fetch(`${API_URL}/games/${gameId}/characters`, { credentials: "include" }),

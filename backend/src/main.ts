@@ -22,6 +22,16 @@ dotenv.config();
 const app = express();
 const httpServer = createServer(app);
 
+// Express genera un ETag automático en cada respuesta JSON. En navegadores
+// con bugs de revalidación condicional (notablemente Safari/WebKit en
+// peticiones con credentials: "include") esto puede hacer que fetch() reciba
+// un 304 "crudo" en vez del body cacheado con 200, y como response.ok es
+// false para 304, el frontend interpreta que la sesión no es válida y manda
+// al usuario de vuelta al login aunque la cookie sea correcta. Como esta API
+// no sirve contenido estático cacheable (eso ya lo maneja /uploads aparte),
+// desactivamos el ETag globalmente.
+app.set("etag", false);
+
 // Comprime todas las respuestas (JSON y estáticos) con gzip/brotli. Los
 // payloads de la ficha, el catálogo de bestias/hechizos y el encuentro de
 // combate son bastante grandes en JSON sin comprimir — esto reduce el

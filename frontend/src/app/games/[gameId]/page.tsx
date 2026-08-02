@@ -204,7 +204,7 @@ export default function CombatPage() {
         // lanzan todas juntas en vez de esperar auth+partida antes de recién
         // pedir combate+mapas.
         const [meResponse, gameResponse, , loadedActiveMap] = await Promise.all([
-          fetch(`${API_URL}/auth/me`, { credentials: "include" }),
+          fetch(`${API_URL}/auth/me`, { credentials: "include", cache: "no-store" }),
           fetch(`${API_URL}/games/${gameId}`, { credentials: "include" }),
           loadCombat(false),
           loadMaps(),

@@ -38,7 +38,7 @@ export default function DashboardPage() {
         // round-trips en serie). Ambas piden lo mismo (la cookie de sesión),
         // así que no dependen una de la otra: se piden en paralelo.
         const [meResponse, gamesResponse] = await Promise.all([
-          fetch(`${API_URL}/auth/me`, { credentials: "include" }),
+          fetch(`${API_URL}/auth/me`, { credentials: "include", cache: "no-store" }),
           fetch(`${API_URL}/games`, { credentials: "include" }),
         ]);
 

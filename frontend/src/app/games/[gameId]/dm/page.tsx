@@ -114,7 +114,7 @@ export default function DmScreenPage() {
 
     try {
       const [meRes, gameRes, charsRes, notesRes, npcsRes, monstersRes, diceRes] = await Promise.all([
-        fetch(`${API_URL}/auth/me`, { credentials: "include" }),
+        fetch(`${API_URL}/auth/me`, { credentials: "include", cache: "no-store" }),
         fetch(`${API_URL}/games/${gameId}`, { credentials: "include" }),
         fetch(`${API_URL}/games/${gameId}/characters`, { credentials: "include" }),
         fetch(`${API_URL}/games/${gameId}/dm/notes`, { credentials: "include" }),

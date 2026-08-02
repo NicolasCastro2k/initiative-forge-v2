@@ -205,7 +205,7 @@ export default function PlayerScreenPage() {
 
     try {
       const [meRes, gameRes, charsRes, journalRes, diceRes, beastsRes] = await Promise.all([
-        fetch(`${API_URL}/auth/me`, { credentials: "include" }),
+        fetch(`${API_URL}/auth/me`, { credentials: "include", cache: "no-store" }),
         fetch(`${API_URL}/games/${gameId}`, { credentials: "include" }),
         fetch(`${API_URL}/games/${gameId}/characters`, { credentials: "include" }),
         fetch(`${API_URL}/games/${gameId}/journal`, { credentials: "include" }),

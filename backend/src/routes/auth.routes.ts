@@ -90,6 +90,11 @@ authRouter.post("/logout", (_req, res) => {
 });
 
 authRouter.get("/me", (req, res) => {
+  // Refuerzo además de `app.set("etag", false)` en main.ts: esta ruta decide
+  // si el usuario queda o no logueado, así que nunca debe poder responderse
+  // desde una caché intermedia (navegador, proxy, CDN) ni con 304.
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate");
+
   const token = req.cookies?.[COOKIE_NAME];
 
   if (!token) {
