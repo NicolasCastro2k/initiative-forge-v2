@@ -328,6 +328,20 @@ export default function DashboardPage() {
                   </p>
                 </a>
               ) : null}
+
+              {user.isAdmin ? (
+                <a
+                  href="/admin/monsters"
+                  className="rounded-3xl border border-yellow-500/40 bg-yellow-500/10 p-6 transition hover:border-yellow-400 hover:bg-yellow-500/20"
+                >
+                  <h2 className="text-xl font-black text-white">
+                    Administrar monstruos
+                  </h2>
+                  <p className="mt-2 text-zinc-300">
+                    Catálogo de enemigos con token para el tablero de combate.
+                  </p>
+                </a>
+              ) : null}
             </section>
           </div>
         )}
@@ -335,3 +349,4 @@ export default function DashboardPage() {
     </main>
   );
 }
+

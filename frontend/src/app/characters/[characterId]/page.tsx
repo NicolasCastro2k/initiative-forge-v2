@@ -415,6 +415,52 @@ function signed(value: number) { return value >= 0 ? `+${value}` : String(value)
 function splitLines(value: string) { return value.split("\n").map((l) => l.trim()).filter(Boolean); }
 function joinLines(value: string[]) { return value.join("\n"); }
 
+// ─── Progresión de hechizos preparados/conocidos por clase ────────────────────
+// "prepared-full"  → nivel + mod. de característica            (Mago, Clérigo, Druida)
+// "prepared-half"  → ½ nivel (redondeo abajo) + mod., mín. 1    (Paladín)
+// "prepared-halfUp"→ ½ nivel (redondeo arriba) + mod., mín. 1   (Artífice)
+// "known"          → tabla fija por nivel, NO suma el mod.      (Bardo, Hechicero, Brujo, Explorador)
+// Los nombres de clase vienen en inglés desde el catálogo (seed-class-presets.ts).
+type SpellcastingProgressionType = "prepared-full" | "prepared-half" | "prepared-halfUp" | "known";
+
+const SPELLCASTING_PROGRESSION: Record<string, SpellcastingProgressionType> = {
+  wizard: "prepared-full",
+  cleric: "prepared-full",
+  druid: "prepared-full",
+  paladin: "prepared-half",
+  artificer: "prepared-halfUp",
+  bard: "known",
+  sorcerer: "known",
+  warlock: "known",
+  ranger: "known",
+};
+
+// Tablas SRD 5.1 de hechizos "conocidos" totales por nivel de personaje
+// (no incluyen trucos, que se manejan aparte y no están limitados en la ficha).
+const KNOWN_SPELLS_TABLE: Record<string, number[]> = {
+  //                 nivel:1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20
+  bard:     [4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15, 15, 16, 18, 19, 19, 20, 22, 22, 22],
+  sorcerer: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 12, 13, 13, 14, 14, 15, 15, 15, 15],
+  warlock:  [2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15],
+  // El Explorador (SRD 5.1) no obtiene conjuros hasta nivel 2.
+  ranger:   [0, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11],
+};
+
+// Tablas oficiales de TRUCOS (cantrips) conocidos por nivel de personaje.
+// A diferencia de los hechizos de nivel 1+, los trucos siempre son una tabla
+// fija por clase — ninguna clase suma el modificador de característica acá.
+// Paladín y Explorador no obtienen trucos, por eso no están en la tabla.
+const CANTRIPS_KNOWN_TABLE: Record<string, number[]> = {
+  //                  nivel:1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20
+  bard:      [2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
+  cleric:    [3, 3, 3, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5],
+  druid:     [2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
+  sorcerer:  [4, 4, 4, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6],
+  warlock:   [2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
+  wizard:    [3, 3, 3, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5],
+  artificer: [2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4],
+};
+
 // ─── Componente principal ─────────────────────────────────────────────────────
 
 export default function CharacterSheetPage() {
@@ -487,8 +533,12 @@ export default function CharacterSheetPage() {
   // ni ya resuelto, y lo agrega a pendingLevelChoices — si no, esos umbrales
   // solo se generaban desde el botón de "Subir de nivel" del DM, que nadie
   // usa cuando se edita el nivel directo en la ficha.
-  function handleLevelChange(newLevel: number) {
+  function handleLevelChange(rawNewLevel: number) {
     const oldLevel = sheetData.identity.level;
+    // El nivel de personaje nunca debe poder bajar (subir de nivel es
+    // permanente en D&D) — sea cual sea el origen del cambio, se limita
+    // acá también, no solo con el `min` del campo del formulario.
+    const newLevel = Math.max(oldLevel, Math.min(20, rawNewLevel));
     const nextPending = [...sheetData.pendingLevelChoices];
 
     if (newLevel > oldLevel) {
@@ -1180,9 +1230,82 @@ export default function CharacterSheetPage() {
 
   const selectedCatalogWeapon = weapons.find((w) => w.id === selectedWeaponCatalogId) ?? null;
 
+  // Máximo de hechizos (no trucos) que el personaje puede tener marcados como
+  // conocidos/preparados. Depende del tipo de lanzador de su clase — ver
+  // SPELLCASTING_PROGRESSION / KNOWN_SPELLS_TABLE más arriba. Si la clase no
+  // está mapeada (p. ej. una subclase de "tercio de lanzador" como Caballero
+  // Arcano) o no hay clase/característica seleccionada, se usa la fórmula
+  // genérica de lanzador preparado completo como aproximación razonable.
+  const maxPreparedSpells = useMemo(() => {
+    if (!spellAbilityKey || !(spellAbilityKey in sheetData.abilities)) return null;
+
+    const level = sheetData.identity.level;
+    const mod = getModifier(sheetData.abilities[spellAbilityKey]);
+    const className = selectedClass?.name.toLowerCase() ?? "";
+    const progressionType = SPELLCASTING_PROGRESSION[className];
+
+    if (progressionType === "known") {
+      const table = KNOWN_SPELLS_TABLE[className];
+      const clampedLevel = Math.min(Math.max(level, 1), 20);
+      return table ? table[clampedLevel - 1] : Math.max(1, level + mod);
+    }
+
+    if (progressionType === "prepared-half") {
+      return Math.max(1, Math.floor(level / 2) + mod);
+    }
+
+    if (progressionType === "prepared-halfUp") {
+      return Math.max(1, Math.ceil(level / 2) + mod);
+    }
+
+    // "prepared-full" y cualquier clase sin mapear.
+    return Math.max(1, level + mod);
+  }, [spellAbilityKey, sheetData.abilities, sheetData.identity.level, selectedClass]);
+
+  const preparationLabel = useMemo(() => {
+    const className = selectedClass?.name.toLowerCase() ?? "";
+    return SPELLCASTING_PROGRESSION[className] === "known" ? "conocidos" : "preparados";
+  }, [selectedClass]);
+
+  const knownPreparedSpellsCount = useMemo(() => {
+    return Array.from({ length: 9 }, (_, i) => String(i + 1)).reduce(
+      (total, lvl) => total + (sheetData.spells.spellsByLevel[lvl]?.length ?? 0),
+      0
+    );
+  }, [sheetData.spells.spellsByLevel]);
+
+  // Máximo de trucos (cantrips) conocidos — tabla fija por clase, no depende
+  // de la característica. Clases sin tabla (p. ej. Paladín, Explorador) no
+  // obtienen trucos por reglas, así que el máximo queda en 0. Si no hay una
+  // clase mapeada, no se aplica límite (null) para no bloquear casos raros.
+  const maxCantrips = useMemo(() => {
+    const className = selectedClass?.name.toLowerCase() ?? "";
+    if (!className) return null;
+    if (className in CANTRIPS_KNOWN_TABLE) {
+      const level = Math.min(Math.max(sheetData.identity.level, 1), 20);
+      return CANTRIPS_KNOWN_TABLE[className][level - 1];
+    }
+    if (className in SPELLCASTING_PROGRESSION) return 0; // clase lanzadora sin trucos (Paladín, Explorador)
+    return null; // clase no lanzadora / no mapeada
+  }, [selectedClass, sheetData.identity.level]);
+
+  const knownCantripsCount = sheetData.spells.spellsByLevel["0"]?.length ?? 0;
+
   function toggleSpell(level: string, spellName: string) {
     const current = sheetData.spells.spellsByLevel[level] ?? [];
     const isKnown = current.includes(spellName);
+
+    // Si es un hechizo (no truco) y ya se llegó al límite, no dejar marcar
+    // uno nuevo — pero sí dejar desmarcar los ya elegidos siempre.
+    if (!isKnown && level !== "0" && maxPreparedSpells !== null && knownPreparedSpellsCount >= maxPreparedSpells) {
+      return;
+    }
+
+    // Mismo criterio para trucos, con su propio límite (tabla fija).
+    if (!isKnown && level === "0" && maxCantrips !== null && knownCantripsCount >= maxCantrips) {
+      return;
+    }
+
     const updated = isKnown ? current.filter((n) => n !== spellName) : [...current, spellName];
     update({
       ...sheetData,
@@ -1412,7 +1535,7 @@ export default function CharacterSheetPage() {
                 <TextField label="Jugador" value={sheetData.identity.playerName}
                   onChange={(v) => update({ ...sheetData, identity: { ...sheetData.identity, playerName: v } })} />
                 <NumberField label="Nivel" value={sheetData.identity.level}
-                  onChange={handleLevelChange} />
+                  onChange={handleLevelChange} min={sheetData.identity.level} max={20} />
 
                 {/* Clase — selector de DB */}
                 <div>
@@ -1945,6 +2068,42 @@ export default function CharacterSheetPage() {
                   )}
                 </div>
 
+                {/* Contador de hechizos preparados/conocidos y de trucos vs.
+                    sus límites respectivos (cada uno con su propia tabla). */}
+                {selectedClass && (
+                  <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+                    {maxPreparedSpells === null ? (
+                      <p className="text-xs text-zinc-500">
+                        Elegí la característica de conjuros arriba para calcular cuántos hechizos podés preparar.
+                      </p>
+                    ) : (
+                      <p className={[
+                        "text-xs font-bold",
+                        knownPreparedSpellsCount >= maxPreparedSpells ? "text-red-300" : "text-zinc-400",
+                      ].join(" ")}>
+                        Hechizos {preparationLabel}: {knownPreparedSpellsCount} / {maxPreparedSpells}
+                        {knownPreparedSpellsCount >= maxPreparedSpells ? " — límite alcanzado" : ""}
+                        <span className="ml-1 font-normal text-zinc-500">
+                          {preparationLabel === "conocidos"
+                            ? "(tabla fija según nivel)"
+                            : "(nivel + mod. característica)"}
+                        </span>
+                      </p>
+                    )}
+
+                    {maxCantrips !== null && (
+                      <p className={[
+                        "text-xs font-bold",
+                        knownCantripsCount >= maxCantrips ? "text-red-300" : "text-zinc-400",
+                      ].join(" ")}>
+                        Trucos: {knownCantripsCount} / {maxCantrips}
+                        {knownCantripsCount >= maxCantrips ? " — límite alcanzado" : ""}
+                        <span className="ml-1 font-normal text-zinc-500">(tabla fija según nivel)</span>
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 {selectedClass && classSpells.length === 0 && (
                   <p className="mt-3 text-xs text-zinc-500">
                     No hay conjuros en el catálogo para esta clase todavía. Un admin puede agregarlos en /admin/spells.
@@ -1952,26 +2111,49 @@ export default function CharacterSheetPage() {
                 )}
 
                 {selectedClass && filteredClassSpells.length > 0 && (
-                  <div className="mt-3 max-h-96 space-y-1 overflow-y-auto">
+                  <div className="mt-3 grid max-h-[36rem] gap-3 overflow-y-auto pr-1 sm:grid-cols-2 xl:grid-cols-3">
                     {filteredClassSpells.map((spell) => {
                       const level = String(spell.level);
                       const isKnown = (sheetData.spells.spellsByLevel[level] ?? []).includes(spell.name);
+                      const atLimit = level === "0"
+                        ? maxCantrips !== null && knownCantripsCount >= maxCantrips
+                        : maxPreparedSpells !== null && knownPreparedSpellsCount >= maxPreparedSpells;
+                      const isDisabled = !isKnown && atLimit;
                       return (
                         <label key={spell.id} className={[
-                          "flex cursor-pointer items-start gap-3 rounded-xl px-3 py-2 text-sm transition",
-                          isKnown ? "bg-yellow-500/20 text-yellow-100" : "text-zinc-300 hover:bg-zinc-800",
+                          "flex flex-col gap-2 rounded-2xl border p-3 text-sm transition",
+                          isKnown
+                            ? "border-yellow-400/60 bg-yellow-500/10"
+                            : isDisabled
+                              ? "cursor-not-allowed border-zinc-800 bg-zinc-950/60 opacity-50"
+                              : "cursor-pointer border-zinc-800 bg-zinc-950 hover:border-zinc-700",
                         ].join(" ")}>
-                          <input type="checkbox" checked={isKnown}
-                            onChange={() => toggleSpell(level, spell.name)}
-                            className="mt-0.5 accent-yellow-400" />
-                          <span className="flex-1">
-                            <span className="font-bold">{spell.name}</span>{" "}
-                            <span className="text-xs text-zinc-500">
-                              {spell.level === 0 ? "(truco)" : `(Nv.${spell.level})`} · {spell.school}
-                              {spell.damageDice ? ` · ${spell.damageDice} ${spell.damageType}` : ""}
-                              {spell.healingDice ? ` · Cura ${spell.healingDice}` : ""}
+                          <div className="flex items-start justify-between gap-2">
+                            <span className="font-black leading-tight text-white">{spell.name}</span>
+                            <input type="checkbox" checked={isKnown} disabled={isDisabled}
+                              onChange={() => toggleSpell(level, spell.name)}
+                              className="mt-0.5 accent-yellow-400" />
+                          </div>
+
+                          <p className="text-[11px] font-bold uppercase tracking-wide text-yellow-400/80">
+                            {spell.level === 0 ? "Truco" : `Nivel ${spell.level}`} · {spell.school}
+                            {spell.concentration ? " · Conc." : ""}
+                            {spell.ritual ? " · Ritual" : ""}
+                          </p>
+
+                          <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-[11px] text-zinc-500">
+                            <span>Lanzamiento: {spell.castingTime || "—"}</span>
+                            <span>Alcance: {spell.range || "—"}</span>
+                            <span>Duración: {spell.duration || "—"}</span>
+                            <span>
+                              {spell.damageDice ? `Daño: ${spell.damageDice} ${spell.damageType ?? ""}` : ""}
+                              {spell.healingDice ? `Cura: ${spell.healingDice}` : ""}
                             </span>
-                          </span>
+                          </div>
+
+                          {spell.description && (
+                            <p className="mt-1 line-clamp-3 text-xs text-zinc-400">{spell.description}</p>
+                          )}
                         </label>
                       );
                     })}
@@ -2035,11 +2217,17 @@ function TextField({ label, value, onChange }: { label: string; value: string; o
   );
 }
 
-function NumberField({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
+function NumberField({ label, value, onChange, min, max }: { label: string; value: number; onChange: (v: number) => void; min?: number; max?: number }) {
   return (
     <label className="block">
       <span className="mb-1 block text-sm font-bold text-zinc-300">{label}</span>
-      <input type="number" value={Number.isFinite(value) ? value : 0} onChange={(e) => onChange(Number(e.target.value))}
+      <input type="number" value={Number.isFinite(value) ? value : 0} min={min} max={max}
+        onChange={(e) => {
+          let next = Number(e.target.value);
+          if (min !== undefined && next < min) next = min;
+          if (max !== undefined && next > max) next = max;
+          onChange(next);
+        }}
         className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white outline-none transition focus:border-yellow-400" />
     </label>
   );
