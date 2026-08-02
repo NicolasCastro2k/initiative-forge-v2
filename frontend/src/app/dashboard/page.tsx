@@ -30,6 +30,7 @@ export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null);
   const [games, setGames] = useState<GameSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadDashboard() {
@@ -42,8 +43,20 @@ export default function DashboardPage() {
           fetch(`${API_URL}/games`, { credentials: "include" }),
         ]);
 
-        if (!meResponse.ok) {
+        // Solo un 401/403 en /auth/me significa "sesión inválida". Cualquier
+        // otro problema (500, timeout, red) NO es un tema de sesión y no debe
+        // mandar al usuario de vuelta al login silenciosamente — antes,
+        // cualquier excepción en este bloque (incluida una respuesta de
+        // /games que no fuera JSON válido) terminaba en el mismo catch de
+        // abajo y lo devolvía al login sin dejar rastro del error real.
+        if (meResponse.status === 401 || meResponse.status === 403) {
           window.location.href = "/login";
+          return;
+        }
+
+        if (!meResponse.ok) {
+          console.error("Error inesperado en /auth/me:", meResponse.status);
+          setError(`No se pudo verificar la sesión (código ${meResponse.status}). Probá recargar la página.`);
           return;
         }
 
@@ -53,9 +66,13 @@ export default function DashboardPage() {
         if (gamesResponse.ok) {
           const gamesData = await gamesResponse.json();
           setGames(gamesData.games ?? []);
+        } else {
+          console.error("Error al cargar /games:", gamesResponse.status);
+          setError(`No se pudieron cargar tus partidas (código ${gamesResponse.status}). Probá recargar la página.`);
         }
-      } catch {
-        window.location.href = "/login";
+      } catch (err) {
+        console.error("Error inesperado cargando el dashboard:", err);
+        setError("No se pudo conectar con el backend. Probá recargar la página.");
       } finally {
         setIsLoading(false);
       }
@@ -91,6 +108,19 @@ export default function DashboardPage() {
       <div className="relative z-10">
         {isLoading ? (
           <div className="flex min-h-screen items-center justify-center">Cargando...</div>
+        ) : error ? (
+          <div className="flex min-h-screen items-center justify-center p-6">
+            <div className="max-w-md rounded-3xl border border-red-500/40 bg-zinc-900 p-6 text-center shadow-2xl">
+              <p className="text-lg font-bold text-red-300">Algo salió mal</p>
+              <p className="mt-2 text-sm text-zinc-400">{error}</p>
+              <button
+                onClick={() => window.location.reload()}
+                className="mt-4 rounded-xl bg-yellow-500 px-5 py-3 font-bold text-zinc-950 transition hover:bg-yellow-400"
+              >
+                Recargar
+              </button>
+            </div>
+          </div>
         ) : !user ? null : (
           <div className="mx-auto max-w-6xl p-6">
             <header className="mb-8 flex flex-col gap-4 rounded-3xl border border-zinc-800 bg-zinc-900 p-6 shadow-2xl md:flex-row md:items-center md:justify-between">

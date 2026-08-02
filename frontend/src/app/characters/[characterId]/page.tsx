@@ -688,6 +688,14 @@ export default function CharacterSheetPage() {
       setSelectedRaceId(loadedChar.raceId ?? "");
       setSelectedBackgroundId(loadedChar.backgroundId ?? "");
 
+      // La ficha ya trae guardadas las competencias de clase elegidas
+      // (sheetData.proficiencies.classSkillChoices). Si no marcamos acá que
+      // la clase actual ya fue "aplicada", el useEffect de más abajo (pensado
+      // para cuando el jugador CAMBIA de clase en el selector) va a creer que
+      // se acaba de asignar una clase nueva y va a resetear esas elecciones
+      // a cero apenas se abre la ficha para editarla.
+      appliedClassIdRef.current = loadedChar.classId ?? "";
+
       setClasses((classesData?.classes ?? []) as ClassPreset[]);
       setRaces((racesData?.races ?? []) as RacePreset[]);
       setBackgrounds((backgroundsData?.backgrounds ?? []) as BackgroundPreset[]);
