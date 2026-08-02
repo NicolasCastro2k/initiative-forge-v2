@@ -1,5 +1,6 @@
 // Va en: backend/src/routes/combat.routes.ts
 import { Router } from "express";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { getAuthUser } from "../lib/getAuthUser.js";
 import { emitToGame } from "../lib/socket.js";
@@ -488,7 +489,7 @@ combatRouter.patch(
                 combat: nextCombat,
                 attacks: saved.attacks,
                 wildShape: { ...sheet.wildShape, active: false, beastId: null, beastName: "", saved: null },
-              },
+              } as Prisma.InputJsonValue,
             },
           });
 
