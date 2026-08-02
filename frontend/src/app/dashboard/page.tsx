@@ -100,7 +100,7 @@ export default function DashboardPage() {
                 </p>
 
                 <h1 className="mt-2 text-3xl font-black">
-                  Bienvenido, {user.name}
+                  Te doy la bienvenida, {user.name}
                 </h1>
 
                 <p className="mt-1 text-zinc-400">Cuenta activa: {user.email}</p>

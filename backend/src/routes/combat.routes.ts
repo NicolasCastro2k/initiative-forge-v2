@@ -1,6 +1,5 @@
 // Va en: backend/src/routes/combat.routes.ts
 import { Router } from "express";
-import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { getAuthUser } from "../lib/getAuthUser.js";
 import { emitToGame } from "../lib/socket.js";
@@ -99,8 +98,19 @@ async function getEncounterPayload(gameId: string) {
           { createdAt: "asc" },
         ],
         include: {
+          // `select` en vez de incluir el character completo: el tablero de
+          // combate no usa `sheetData` (es el campo más pesado, con toda la
+          // ficha) — antes viajaba igual en cada actualización de combate
+          // sin que nada lo leyera del otro lado.
           character: {
-            include: {
+            select: {
+              id: true,
+              name: true,
+              level: true,
+              classId: true,
+              subclassId: true,
+              tokenImagePath: true,
+              portraitImagePath: true,
               owner: {
                 select: {
                   id: true,
@@ -193,7 +203,7 @@ combatRouter.post("/games/:gameId/combat/prepare", async (req, res) => {
       const currentHp = numberOrFallback(combat.currentHp, maxHp);
       const armorClass = numberOrFallback(combat.armorClass, 10);
       const initiative = numberOrFallback(combat.initiative, 10 + index);
-      const speed = numberOrFallback(combat.speed ?? (sheetData as { speed?: number }).speed, 30);
+      const speed = numberOrFallback(combat.speed, 30);
 
       await prisma.combatant.create({
         data: {
@@ -474,11 +484,11 @@ combatRouter.patch(
             data: {
               tokenImagePath: saved.tokenImagePath,
               sheetData: {
-                ...(character.sheetData as object),
+                ...(character.sheetData as unknown as Record<string, unknown>),
                 combat: nextCombat,
                 attacks: saved.attacks,
                 wildShape: { ...sheet.wildShape, active: false, beastId: null, beastName: "", saved: null },
-              } as unknown as Prisma.InputJsonValue,
+              },
             },
           });
 

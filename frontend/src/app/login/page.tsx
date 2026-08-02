@@ -150,7 +150,7 @@ function LoginForm() {
         </form>
 
         <div className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950 p-4 text-sm text-zinc-400">
-          <p className="font-semibold text-zinc-200">Todos los ususarios son bienvenidos:</p>
+          <p className="font-semibold text-zinc-200">Todos los usuarios son bienvenidos:</p>
           <p>Gracias por apoyarme chicos</p>
           <p>Los quiero</p>
         </div>

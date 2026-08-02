@@ -68,8 +68,20 @@ async function getEncounterPayloadForGame(gameId: string) {
       combatants: {
         orderBy: [{ initiative: "desc" }, { createdAt: "asc" }],
         include: {
+          // select en vez de include completo: este payload es solo para
+          // refrescar el tablero de combate por socket, que no usa
+          // sheetData (el campo más pesado de character).
           character: {
-            include: { owner: { select: { id: true, name: true, email: true } } },
+            select: {
+              id: true,
+              name: true,
+              level: true,
+              classId: true,
+              subclassId: true,
+              tokenImagePath: true,
+              portraitImagePath: true,
+              owner: { select: { id: true, name: true, email: true } },
+            },
           },
         },
       },
