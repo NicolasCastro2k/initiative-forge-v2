@@ -417,6 +417,7 @@ model MonsterPreset {
   speed       Int?
   damageDice  String?
   damageType  String?
+  tokenImagePath String?
   source      String   @default("Personalizado")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
