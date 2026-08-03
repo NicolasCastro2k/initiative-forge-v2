@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import { useParams } from "next/navigation";
 import { io, Socket } from "socket.io-client";
 import CombatActionPanel from "@/components/CombatActionPanel";
@@ -48,6 +48,23 @@ type BattleMap = {
 
 type CombatantType = "PLAYER" | "ENEMY";
 
+// Monstruo del bestiario de la partida (lo que el DM ve/carga en su pantalla
+// — /games/:gameId/monsters). No confundir con el catálogo global de
+// monstruos (/presets/monster-catalog): este es el que ya está "en la mesa"
+// de esta partida en particular y de acá salen los enemigos del combate.
+type BestiaryMonster = {
+  id: string;
+  name: string;
+  description: string;
+  hp: number | null;
+  maxHp: number | null;
+  ac: number | null;
+  speed: number | null;
+  damageDice: string | null;
+  damageType: string | null;
+  tokenImagePath: string | null;
+};
+
 type CombatCharacter = {
   id: string;
   ownerUserId: string;
@@ -93,6 +110,7 @@ type Combatant = {
   str: number; dex: number; con: number;
   int: number; wis: number; cha: number;
   conditions: Condition[];
+  tokenImagePath: string | null;
   createdAt: string;
   updatedAt: string;
   character?: CombatCharacter | null;
@@ -129,6 +147,13 @@ function getTileClass(
   return `${base} ${styles[tile]}`;
 }
 
+// Resuelve el token a mostrar para cualquier combatiente: los enemigos usan
+// su propio tokenImagePath (copiado del bestiario al agregarlos al combate);
+// los jugadores usan el token de su ficha de personaje.
+function getCombatantTokenPath(combatant: Combatant): string | null {
+  return combatant.tokenImagePath ?? combatant.character?.tokenImagePath ?? null;
+}
+
 function getTokenClass(
   combatant: Combatant,
   isSelected: boolean,
@@ -163,6 +188,12 @@ export default function CombatPage() {
   const [enemyHp, setEnemyHp] = useState(7);
   const [enemyAc, setEnemyAc] = useState(13);
   const [enemyInitiative, setEnemyInitiative] = useState(10);
+  const [enemyTokenImagePath, setEnemyTokenImagePath] = useState<string | null>(null);
+  // Bestiario de la partida (monstruos que el DM cargó en su pantalla, sea a
+  // mano o importados del catálogo global) — de acá se eligen los enemigos
+  // para agregarlos al combate ya con su token.
+  const [bestiaryMonsters, setBestiaryMonsters] = useState<BestiaryMonster[]>([]);
+  const [selectedBestiaryId, setSelectedBestiaryId] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isStartingCombat, setIsStartingCombat] = useState(false);
@@ -179,6 +210,7 @@ export default function CombatPage() {
   const isDmRef = useRef(false);
 
   const combatants = useMemo(() => encounter?.combatants ?? [], [encounter]);
+  const playerCombatants = useMemo(() => combatants.filter((c) => c.type === "PLAYER"), [combatants]);
   const activeCombatant = combatants[encounter?.currentTurnIndex ?? 0] ?? combatants[0] ?? null;
   const selectedCombatant = combatants.find((c) => c.id === selectedCombatantId);
   const isDm = game?.role === "DM";
@@ -237,6 +269,7 @@ export default function CombatPage() {
         await Promise.all([
           loadCombat(false),
           loadMaps(loadedGame.role),
+          loadedGame.role === "DM" ? loadBestiaryMonsters() : Promise.resolve(),
         ]);
       } catch {
         setError("No se pudo conectar con el backend.");
@@ -439,6 +472,20 @@ export default function CombatPage() {
       setMap(loadedActiveMap);
       setPreviewMap(role === "DM" ? loadedActiveMap : null);
       setLastVisibleMapId(loadedActiveMap.id);
+    }
+  }
+
+  // Bestiario de la partida — mismo listado que ve el DM en su pantalla
+  // (/games/:gameId/monsters), usado acá para elegir enemigos con token.
+  async function loadBestiaryMonsters() {
+    if (!gameId) return;
+    try {
+      const response = await fetch(`${API_URL}/games/${gameId}/monsters`, { credentials: "include" });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) return; // silencioso: esto es un extra, no bloquea la carga del combate
+      setBestiaryMonsters((data?.monsters ?? []) as BestiaryMonster[]);
+    } catch {
+      // silencioso — el DM igual puede seguir agregando enemigos a mano
     }
   }
 
@@ -703,7 +750,106 @@ export default function CombatPage() {
     }
   }
 
-  // ─── Turno siguiente ────────────────────────────────────────────────────────
+  // Coloca un combatiente en una celda SIN gastar movimiento — a diferencia
+  // de moveCombatant, pensada para el arrastre de fichas al tablero (armado
+  // de la escena) y no para el desplazamiento real durante un turno.
+  async function placeCombatantOnBoard(combatant: Combatant, x: number, y: number) {
+    if (!gameId) return;
+
+    const previousX = combatant.x;
+    const previousY = combatant.y;
+
+    setEncounter((current) => {
+      if (!current) return current;
+      return {
+        ...current,
+        combatants: current.combatants.map((c) => (c.id === combatant.id ? { ...c, x, y } : c)),
+      };
+    });
+
+    setCombatLog((current) => [`${combatant.name} colocado en (${x}, ${y}).`, ...current]);
+
+    try {
+      const response = await fetch(
+        `${API_URL}/games/${gameId}/combat/combatants/${combatant.id}`,
+        {
+          method: "PATCH",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ x, y }),
+        }
+      );
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        setEncounter((current) => {
+          if (!current) return current;
+          return {
+            ...current,
+            combatants: current.combatants.map((c) =>
+              c.id === combatant.id ? { ...c, x: previousX, y: previousY } : c
+            ),
+          };
+        });
+        setError(data?.message ?? "No se pudo colocar la ficha.");
+      }
+      // Si salió bien, el socket actualiza a todos los demás.
+    } catch {
+      setEncounter((current) => {
+        if (!current) return current;
+        return {
+          ...current,
+          combatants: current.combatants.map((c) =>
+            c.id === combatant.id ? { ...c, x: previousX, y: previousY } : c
+          ),
+        };
+      });
+      setError("No se pudo conectar con el backend.");
+    }
+  }
+
+  // ─── Arrastrar y soltar fichas de jugadores al tablero ─────────────────────
+  function handleTokenDragStart(e: DragEvent<HTMLElement>, combatantId: string) {
+    e.dataTransfer.setData("text/combatant-id", combatantId);
+    e.dataTransfer.effectAllowed = "move";
+  }
+
+  function handleCellDragOver(e: DragEvent<HTMLButtonElement>) {
+    if (!isDm) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  }
+
+  function handleCellDrop(e: DragEvent<HTMLButtonElement>, x: number, y: number) {
+    if (!isDm || !displayedMap) return;
+    e.preventDefault();
+
+    const combatantId = e.dataTransfer.getData("text/combatant-id");
+    if (!combatantId) return;
+
+    const combatant = combatants.find((c) => c.id === combatantId);
+    if (!combatant) return;
+
+    const tile = displayedMap.gridData.tiles[y]?.[x];
+    if (tile !== "floor") {
+      setCombatLog((current) => ["Solo puedes colocar fichas en casillas de suelo.", ...current]);
+      return;
+    }
+
+    const occupied = combatants.find((c) => c.x === x && c.y === y && c.id !== combatantId);
+    if (occupied) {
+      setCombatLog((current) => [`Casilla ocupada por ${occupied.name}.`, ...current]);
+      return;
+    }
+
+    placeCombatantOnBoard(combatant, x, y);
+
+    // Si estaba en la cola de colocación (modo click clásico), sacarla —
+    // así ambos métodos (arrastrar o hacer click en orden) se llevan bien.
+    setPlacementQueue((current) => current.filter((c) => c.id !== combatantId));
+  }
+
+
   async function nextTurn() {
     if (!gameId || !isDm) {
       setCombatLog((current) => ["Solo el DM puede avanzar el turno.", ...current]);
@@ -741,6 +887,19 @@ export default function CombatPage() {
   }
 
   // ─── Agregar/eliminar enemigos ──────────────────────────────────────────────
+  function handleBestiarySelect(monsterId: string) {
+    setSelectedBestiaryId(monsterId);
+    if (!monsterId) return;
+
+    const monster = bestiaryMonsters.find((m) => m.id === monsterId);
+    if (!monster) return;
+
+    setEnemyName(monster.name);
+    if (monster.hp !== null) setEnemyHp(monster.hp);
+    if (monster.ac !== null) setEnemyAc(monster.ac);
+    setEnemyTokenImagePath(monster.tokenImagePath);
+  }
+
   async function addEnemy(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -782,6 +941,7 @@ export default function CombatPage() {
           maxHp: enemyHp,
           ac: enemyAc,
           initiative: enemyInitiative,
+          tokenImagePath: enemyTokenImagePath,
           x: freeTile.x,
           y: freeTile.y,
         }),
@@ -800,6 +960,8 @@ export default function CombatPage() {
       setEnemyHp(7);
       setEnemyAc(13);
       setEnemyInitiative(10);
+      setEnemyTokenImagePath(null);
+      setSelectedBestiaryId("");
 
       setCombatLog((current) => [
         `${name} entra al combate en (${freeTile.x}, ${freeTile.y}).`,
@@ -1165,15 +1327,93 @@ export default function CombatPage() {
             )}
 
             {isDm && (
+              <section className="rounded-3xl border border-sky-500/30 bg-sky-500/10 p-5 shadow-2xl">
+                <h2 className="text-xl font-black text-sky-100">Fichas de jugadores</h2>
+                <p className="mt-2 text-sm text-sky-100/70">
+                  Arrastrá una ficha hacia una casilla del tablero para ubicarla.
+                </p>
+
+                {!encounter || playerCombatants.length === 0 ? (
+                  <div className="mt-4 rounded-2xl border border-dashed border-sky-500/30 bg-zinc-950 p-4 text-sm text-zinc-400">
+                    {encounter
+                      ? "No hay personajes jugadores en este combate."
+                      : "Primero prepará el combate para que aparezcan las fichas acá."}
+                  </div>
+                ) : (
+                  <div className="mt-4 grid grid-cols-2 gap-3">
+                    {playerCombatants.map((combatant) => {
+                      const isPlaced = combatant.x !== -1 && combatant.y !== -1;
+                      return (
+                        <div key={combatant.id} draggable
+                          onDragStart={(e) => handleTokenDragStart(e, combatant.id)}
+                          className={["flex cursor-grab flex-col items-center gap-2 rounded-2xl border p-3 text-center transition active:cursor-grabbing",
+                            isPlaced ? "border-sky-500/30 bg-zinc-950/60 opacity-70" : "border-sky-400/60 bg-zinc-950",
+                          ].join(" ")}>
+                          <span className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border-2 border-sky-400 bg-sky-500/20 text-lg font-black text-sky-200">
+                            {combatant.character?.tokenImagePath ? (
+                              <img src={`${API_URL}${combatant.character.tokenImagePath}`} alt={combatant.name}
+                                className="h-full w-full object-cover" draggable={false} />
+                            ) : (
+                              combatant.name.slice(0, 1)
+                            )}
+                          </span>
+                          <p className="w-full truncate text-xs font-bold text-white">{combatant.name}</p>
+                          <p className="text-[10px] font-semibold text-sky-300/80">
+                            {isPlaced ? `En (${combatant.x}, ${combatant.y})` : "Sin colocar"}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </section>
+            )}
+
+            {isDm && (
               <section className="rounded-3xl border border-red-500/30 bg-red-500/10 p-5 shadow-2xl">
                 <h2 className="text-xl font-black text-red-100">Enemigos</h2>
                 <p className="mt-2 text-sm text-red-100/70">Los enemigos se guardan en el combate activo.</p>
+
+                {bestiaryMonsters.length > 0 && (
+                  <div className="mt-4">
+                    <label className="mb-1 block text-sm font-bold text-zinc-200">
+                      Cargar desde el bestiario de la partida
+                    </label>
+                    <select value={selectedBestiaryId} onChange={(e) => handleBestiarySelect(e.target.value)}
+                      className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white outline-none transition focus:border-red-400">
+                      <option value="">— Elegir monstruo cargado —</option>
+                      {bestiaryMonsters.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.name}{m.hp !== null ? ` (PG ${m.hp}${m.ac !== null ? `, CA ${m.ac}` : ""})` : ""}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="mt-1 text-[11px] text-zinc-500">
+                      Se cargan en <a href={`/games/${gameId}/dm`} className="underline hover:text-zinc-300">la pantalla del DM</a>,
+                      a mano o desde el catálogo de monstruos.
+                    </p>
+                  </div>
+                )}
+
                 <form onSubmit={addEnemy} className="mt-4 space-y-3">
-                  <div>
-                    <label className="mb-1 block text-sm font-bold text-zinc-200">Nombre</label>
-                    <input value={enemyName} onChange={(e) => setEnemyName(e.target.value)}
-                      className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white outline-none transition focus:border-red-400"
-                      placeholder="Goblin, Orco, Bandido..." />
+                  <div className="flex items-end gap-3">
+                    {enemyTokenImagePath && (
+                      <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded-full border-2 border-red-400 bg-zinc-950">
+                        <img src={`${API_URL}${enemyTokenImagePath}`} alt="" className="h-full w-full object-cover" />
+                      </div>
+                    )}
+                    <div className="flex-1">
+                      <label className="mb-1 block text-sm font-bold text-zinc-200">Nombre</label>
+                      <input value={enemyName}
+                        onChange={(e) => {
+                          setEnemyName(e.target.value);
+                          // Si toca el nombre a mano, ya no es "el mismo" que el
+                          // elegido del bestiario — se desvincula el token/selección.
+                          if (selectedBestiaryId) { setSelectedBestiaryId(""); setEnemyTokenImagePath(null); }
+                        }}
+                        className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white outline-none transition focus:border-red-400"
+                        placeholder="Goblin, Orco, Bandido..." />
+                    </div>
                   </div>
                   <div className="grid grid-cols-3 gap-2">
                     <div>
@@ -1286,21 +1526,25 @@ export default function CombatPage() {
                           const isSpellArea = spellAreaTiles.some((t) => t.x === x && t.y === y);
                           return (
                             <button key={`${y}-${x}`} type="button" onClick={() => handleCellClick(x, y)}
+                              onDragOver={handleCellDragOver} onDrop={(e) => handleCellDrop(e, x, y)}
                               className={getTileClass(tile, isHighlighted, isSpellArea)} title={`${x},${y} · ${tile}`}>
-                              {combatant && (
-                                <span className={getTokenClass(combatant, isSelected, isActive, canControl, !!combatant.character?.tokenImagePath)}>
-                                  {combatant.character?.tokenImagePath ? (
-                                    <img
-                                      src={`${API_URL}${combatant.character.tokenImagePath}`}
-                                      alt={combatant.name}
-                                      className="h-full w-full object-cover"
-                                      draggable={false}
-                                    />
-                                  ) : (
-                                    combatant.name.slice(0, 1)
-                                  )}
-                                </span>
-                              )}
+                              {combatant && (() => {
+                                const tokenPath = getCombatantTokenPath(combatant);
+                                return (
+                                  <span className={getTokenClass(combatant, isSelected, isActive, canControl, !!tokenPath)}>
+                                    {tokenPath ? (
+                                      <img
+                                        src={`${API_URL}${tokenPath}`}
+                                        alt={combatant.name}
+                                        className="h-full w-full object-cover"
+                                        draggable={false}
+                                      />
+                                    ) : (
+                                      combatant.name.slice(0, 1)
+                                    )}
+                                  </span>
+                                );
+                              })()}
                             </button>
                           );
                         })

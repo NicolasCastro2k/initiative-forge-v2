@@ -56,6 +56,24 @@ type Monster = {
   speed: number | null;
   damageDice: string | null;
   damageType: string | null;
+  tokenImagePath: string | null;
+};
+
+// Entrada del catálogo GLOBAL de monstruos (/presets/monster-catalog),
+// reusable entre partidas. Al "cargarlo", se crea una copia en el bestiario
+// de ESTA partida (Monster de arriba), incluido el token.
+type CatalogMonster = {
+  id: string;
+  name: string;
+  crLabel: string;
+  ac: number;
+  hp: number;
+  hitDice: string;
+  speedWalk: number;
+  tokenImagePath: string | null;
+  attacks: { name: string; damage: string; damageType: string }[];
+  traits: string;
+  source: string;
 };
 
 function getImageUrl(path: string | null) {
@@ -86,6 +104,12 @@ export default function DmScreenPage() {
   const [npcForm, setNpcForm] = useState(emptyNpcForm);
   const [monsterForm, setMonsterForm] = useState(emptyMonsterForm);
 
+  // Catálogo global de monstruos, para importar al bestiario de esta partida.
+  const [catalogMonsters, setCatalogMonsters] = useState<CatalogMonster[]>([]);
+  const [isCatalogModalOpen, setIsCatalogModalOpen] = useState(false);
+  const [catalogSearch, setCatalogSearch] = useState("");
+  const [isImportingId, setIsImportingId] = useState<string | null>(null);
+
   const [diceLog, setDiceLog] = useState<DiceRoll[]>([]);
   const [isDiceModalOpen, setIsDiceModalOpen] = useState(false);
   const [diceSides, setDiceSides] = useState(20);
@@ -106,6 +130,25 @@ export default function DmScreenPage() {
     loadAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameId]);
+
+  useEffect(() => {
+    loadCatalogMonsters();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameId]);
+
+  // Catálogo global — no bloquea la carga principal de la pantalla del DM si
+  // falla, ya que solo se usa para el botón de "importar del catálogo".
+  async function loadCatalogMonsters() {
+    if (!gameId) return;
+    try {
+      const response = await fetch(`${API_URL}/presets/monster-catalog`, { credentials: "include" });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) return;
+      setCatalogMonsters((data?.monsters ?? []) as CatalogMonster[]);
+    } catch {
+      // silencioso
+    }
+  }
 
   async function loadAll() {
     if (!gameId) return;
@@ -338,6 +381,53 @@ export default function DmScreenPage() {
     }
   }
 
+  // Copia un monstruo del catálogo GLOBAL al bestiario de ESTA partida —
+  // trae stats, token y un resumen de ataques/rasgos como descripción, para
+  // que quede utilizable de una en el tablero de combate.
+  async function importFromCatalog(catalogMonster: CatalogMonster) {
+    if (!gameId) return;
+    setIsImportingId(catalogMonster.id);
+    setError("");
+
+    const attacksSummary = catalogMonster.attacks
+      .map((a) => `${a.name}: ${a.damage}${a.damageType ? ` ${a.damageType}` : ""}`)
+      .join(" · ");
+    const primaryAttack = catalogMonster.attacks[0];
+
+    try {
+      const response = await fetch(`${API_URL}/games/${gameId}/monsters`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: catalogMonster.name,
+          description: `CR ${catalogMonster.crLabel} · ${attacksSummary}`,
+          notes: catalogMonster.traits,
+          hp: catalogMonster.hp,
+          maxHp: catalogMonster.hp,
+          ac: catalogMonster.ac,
+          speed: catalogMonster.speedWalk,
+          damageDice: primaryAttack?.damage ?? null,
+          damageType: primaryAttack?.damageType ?? null,
+          tokenImagePath: catalogMonster.tokenImagePath,
+          source: catalogMonster.source,
+        }),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) { setError(data?.message ?? "No se pudo importar el monstruo."); return; }
+      setMonsters((current) => [...current, data.monster as Monster].sort((a, b) => a.name.localeCompare(b.name)));
+      setMessage(`${catalogMonster.name} agregado al bestiario de la partida.`);
+    } catch {
+      setError("No se pudo conectar con el backend.");
+    } finally {
+      setIsImportingId(null);
+    }
+  }
+
+  const filteredCatalogMonsters = catalogMonsters.filter((m) =>
+    m.name.toLowerCase().includes(catalogSearch.trim().toLowerCase())
+  );
+
   if (isLoading) {
     return <main className="flex min-h-screen items-center justify-center bg-zinc-950 text-white">Cargando pantalla de DM...</main>;
   }
@@ -416,6 +506,10 @@ export default function DmScreenPage() {
                   className="rounded-xl border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm font-bold text-red-300 transition hover:bg-red-500/20">
                   Añadir monstruo
                 </button>
+                <button type="button" onClick={() => setIsCatalogModalOpen(true)}
+                  className="rounded-xl border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm font-bold text-red-300 transition hover:bg-red-500/20">
+                  Del catálogo
+                </button>
                 <button type="button" onClick={() => applyRest("long")} disabled={isResting}
                   className="rounded-xl border border-sky-500/40 bg-sky-500/10 px-3 py-2 text-sm font-bold text-sky-300 transition hover:bg-sky-500/20 disabled:opacity-60">
                   Descanso largo
@@ -482,27 +576,43 @@ export default function DmScreenPage() {
             </section>
 
             <section className="rounded-3xl border border-zinc-800 bg-zinc-900 p-5 shadow-2xl">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2">
                 <h2 className="text-lg font-black">Lista de monstruos</h2>
-                <button type="button" onClick={() => setIsMonsterModalOpen(true)}
-                  className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-red-500">
-                  + Monstruo
-                </button>
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => setIsCatalogModalOpen(true)}
+                    className="rounded-lg border border-red-500/40 px-3 py-1.5 text-xs font-bold text-red-300 transition hover:bg-red-500/10">
+                    Del catálogo
+                  </button>
+                  <button type="button" onClick={() => setIsMonsterModalOpen(true)}
+                    className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-red-500">
+                    + Monstruo
+                  </button>
+                </div>
               </div>
+              <p className="mt-2 text-xs text-zinc-500">
+                Estos monstruos (con su token) son los que vas a poder elegir como enemigos en el tablero de combate.
+              </p>
               <div className="mt-3 max-h-48 space-y-2 overflow-y-auto">
                 {monsters.length === 0 ? (
                   <p className="text-sm text-zinc-500">Sin monstruos registrados.</p>
                 ) : (
                   monsters.map((monster) => (
                     <div key={monster.id} className="flex items-start justify-between gap-2 rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2">
-                      <div>
-                        <p className="text-sm font-bold text-white">{monster.name}</p>
-                        {monster.description && <p className="text-xs text-zinc-400">{monster.description}</p>}
-                        <p className="text-xs text-zinc-500">
-                          {monster.hp !== null ? `PG ${monster.hp}` : ""}
-                          {monster.ac !== null ? ` · CA ${monster.ac}` : ""}
-                          {monster.damageDice ? ` · ${monster.damageDice} ${monster.damageType ?? ""}` : ""}
-                        </p>
+                      <div className="flex items-start gap-2">
+                        <div className="h-9 w-9 flex-shrink-0 overflow-hidden rounded-full border border-zinc-700 bg-zinc-900">
+                          {monster.tokenImagePath ? (
+                            <img src={getImageUrl(monster.tokenImagePath)} alt="" className="h-full w-full object-cover" />
+                          ) : null}
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-white">{monster.name}</p>
+                          {monster.description && <p className="text-xs text-zinc-400">{monster.description}</p>}
+                          <p className="text-xs text-zinc-500">
+                            {monster.hp !== null ? `PG ${monster.hp}` : ""}
+                            {monster.ac !== null ? ` · CA ${monster.ac}` : ""}
+                            {monster.damageDice ? ` · ${monster.damageDice} ${monster.damageType ?? ""}` : ""}
+                          </p>
+                        </div>
                       </div>
                       <button type="button" onClick={() => deleteMonster(monster)} className="text-xs font-bold text-red-400 hover:text-red-300">
                         Eliminar
@@ -645,6 +755,61 @@ export default function DmScreenPage() {
             <button type="button" onClick={() => setIsMonsterModalOpen(false)}
               className="mt-2 w-full rounded-xl border border-zinc-700 px-4 py-2 text-sm font-semibold text-zinc-300 transition hover:bg-zinc-800">
               Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {isCatalogModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setIsCatalogModalOpen(false)}>
+          <div onClick={(e) => e.stopPropagation()} className="flex max-h-[80vh] w-full max-w-lg flex-col rounded-3xl border border-zinc-800 bg-zinc-900 p-6 shadow-2xl">
+            <h3 className="text-xl font-black">Importar del catálogo</h3>
+            <p className="mt-1 text-sm text-zinc-400">
+              Se agrega una copia (con token) al bestiario de esta partida.
+            </p>
+            <input value={catalogSearch} onChange={(e) => setCatalogSearch(e.target.value)}
+              placeholder="Buscar monstruo..."
+              className="mt-4 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white outline-none focus:border-red-400" />
+
+            <div className="mt-3 min-h-0 flex-1 space-y-2 overflow-y-auto">
+              {catalogMonsters.length === 0 ? (
+                <p className="text-sm text-zinc-500">
+                  El catálogo global todavía no tiene monstruos cargados. Un admin puede agregarlos en /admin/monsters.
+                </p>
+              ) : filteredCatalogMonsters.length === 0 ? (
+                <p className="text-sm text-zinc-500">Sin resultados para &quot;{catalogSearch}&quot;.</p>
+              ) : (
+                filteredCatalogMonsters.map((cm) => {
+                  const alreadyAdded = monsters.some((m) => m.name === cm.name);
+                  return (
+                    <div key={cm.id} className="flex items-center justify-between gap-2 rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2">
+                      <div className="flex items-center gap-2">
+                        <div className="h-9 w-9 flex-shrink-0 overflow-hidden rounded-full border border-zinc-700 bg-zinc-900">
+                          {cm.tokenImagePath ? (
+                            <img src={getImageUrl(cm.tokenImagePath)} alt="" className="h-full w-full object-cover" />
+                          ) : null}
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-white">
+                            {cm.name} <span className="text-xs font-normal text-zinc-500">CR {cm.crLabel}</span>
+                          </p>
+                          <p className="text-xs text-zinc-500">CA {cm.ac} · PG {cm.hp}</p>
+                        </div>
+                      </div>
+                      <button type="button" onClick={() => importFromCatalog(cm)}
+                        disabled={isImportingId === cm.id}
+                        className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-red-500 disabled:opacity-60">
+                        {isImportingId === cm.id ? "Agregando..." : alreadyAdded ? "Agregar otra vez" : "Agregar"}
+                      </button>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            <button type="button" onClick={() => setIsCatalogModalOpen(false)}
+              className="mt-4 w-full rounded-xl border border-zinc-700 px-4 py-2 text-sm font-semibold text-zinc-300 transition hover:bg-zinc-800">
+              Cerrar
             </button>
           </div>
         </div>

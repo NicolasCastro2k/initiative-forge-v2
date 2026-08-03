@@ -465,3 +465,39 @@ model BeastPreset {
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 }
+
+// ─── Catálogo global de monstruos para el mapa de combate ─────────────────────
+// Bestiario reutilizable entre partidas (a diferencia de MonsterPreset, que
+// vive dentro de una partida puntual para la Pantalla del DM). Administrado
+// desde /admin/monsters. Mismo shape que BeastPreset menos los campos
+// exclusivos de Forma Salvaje.
+model MonsterCatalogPreset {
+  id                  String   @id
+  name                String
+  nameEn              String?
+  cr                  Float // valor numérico (0.125 = 1/8) para ordenar/comparar
+  crLabel             String // "1/8", "1/4", "1/2", "1", "2"...
+  ac                  Int
+  hp                  Int
+  hitDice             String // "2d6"
+  speedWalk           Int      @default(0)
+  speedFly            Int      @default(0)
+  speedSwim           Int      @default(0)
+  speedClimb          Int      @default(0)
+  speedBurrow         Int      @default(0)
+  size                String
+  strength            Int
+  dexterity           Int
+  constitution        Int
+  attacks             Json     @default("[]") // [{ name, attackBonus, reach, rangeShort, rangeLong, damage, damageType }]
+  traits              String   @default("")
+  vulnerabilities     String?
+  resistances         String?
+  immunities          String?
+  conditionImmunities String?
+  multiattack         Boolean  @default(false)
+  tokenImagePath      String?
+  source              String   @default("Personalizada")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}

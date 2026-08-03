@@ -9,7 +9,9 @@
     "start": "node dist/main.js",
     "build": "tsc",
     "seed:classes": "tsx prisma/seed-class-presets.ts",
-    "seed:subclasses": "tsx prisma/seed-subclass-presets.ts"
+    "seed:subclasses": "tsx prisma/seed-subclass-presets.ts",
+    "seed:monsters": "tsx prisma/seed-monster-presets.ts",
+    "seed:beasts": "tsx prisma/seed-beast-presets.ts"
   },
   "keywords": [],
   "author": "",

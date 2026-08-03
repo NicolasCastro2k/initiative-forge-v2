@@ -609,3 +609,147 @@ adminRouter.post("/beasts/:beastId/image", uploadBeastImage.single("image"), asy
     });
   }
 });
+
+// ─── Administración de monstruos — catálogo global de combate (MonsterCatalogPreset) ──
+// Reutiliza el mismo multer de bestias (memoria + límite 5MB + tipos de imagen permitidos).
+
+function monsterDataFromBody(req: import("express").Request, existing?: { [key: string]: unknown }) {
+  const pick = (key: string, fallback: unknown) => (req.body[key] !== undefined ? req.body[key] : (existing ? existing[key] : fallback));
+
+  return {
+    name: String(pick("name", "")).trim(),
+    nameEn: pick("nameEn", null) ? String(pick("nameEn", "")).trim() : null,
+    cr: Number(pick("cr", 0)),
+    crLabel: String(pick("crLabel", "0")).trim(),
+    ac: Number(pick("ac", 10)),
+    hp: Number(pick("hp", 1)),
+    hitDice: String(pick("hitDice", "")).trim(),
+    speedWalk: Number(pick("speedWalk", 0)),
+    speedFly: Number(pick("speedFly", 0)),
+    speedSwim: Number(pick("speedSwim", 0)),
+    speedClimb: Number(pick("speedClimb", 0)),
+    speedBurrow: Number(pick("speedBurrow", 0)),
+    size: String(pick("size", "Mediano")).trim(),
+    strength: Number(pick("strength", 10)),
+    dexterity: Number(pick("dexterity", 10)),
+    constitution: Number(pick("constitution", 10)),
+    attacks: Array.isArray(pick("attacks", [])) ? pick("attacks", []) : [],
+    traits: String(pick("traits", "")).trim(),
+    vulnerabilities: pick("vulnerabilities", null) ? String(pick("vulnerabilities", "")).trim() : null,
+    resistances: pick("resistances", null) ? String(pick("resistances", "")).trim() : null,
+    immunities: pick("immunities", null) ? String(pick("immunities", "")).trim() : null,
+    conditionImmunities: pick("conditionImmunities", null) ? String(pick("conditionImmunities", "")).trim() : null,
+    multiattack: Boolean(pick("multiattack", false)),
+    source: String(pick("source", "Personalizada")).trim(),
+  };
+}
+
+adminRouter.get("/monsters", async (_req, res) => {
+  try {
+    const monsters = await prisma.monsterCatalogPreset.findMany({
+      orderBy: [{ cr: "asc" }, { name: "asc" }],
+    });
+
+    return res.json({ monsters });
+  } catch (error) {
+    console.error("Error en GET /admin/monsters:", error);
+    return res.status(500).json({ message: "Error interno al cargar monstruos." });
+  }
+});
+
+adminRouter.post("/monsters", async (req, res) => {
+  try {
+    const data = monsterDataFromBody(req);
+
+    if (!data.name || !data.hitDice) {
+      return res.status(400).json({ message: "Nombre y dado de golpe son obligatorios." });
+    }
+
+    let id = slugify(data.name);
+    const existing = await prisma.monsterCatalogPreset.findUnique({ where: { id } });
+    if (existing) id = `${id}-${Date.now()}`;
+
+    const monster = await prisma.monsterCatalogPreset.create({ data: { id, ...data } });
+
+    return res.status(201).json({ monster });
+  } catch (error) {
+    console.error("Error en POST /admin/monsters:", error);
+    return res.status(500).json({ message: "Error interno al crear el monstruo." });
+  }
+});
+
+adminRouter.put("/monsters/:monsterId", async (req, res) => {
+  try {
+    const monsterId = String(req.params.monsterId);
+
+    const existing = await prisma.monsterCatalogPreset.findUnique({ where: { id: monsterId } });
+    if (!existing) {
+      return res.status(404).json({ message: "Monstruo no encontrado." });
+    }
+
+    const monster = await prisma.monsterCatalogPreset.update({
+      where: { id: monsterId },
+      data: monsterDataFromBody(req, existing as unknown as { [key: string]: unknown }),
+    });
+
+    return res.json({ monster });
+  } catch (error) {
+    console.error("Error en PUT /admin/monsters/:monsterId:", error);
+    return res.status(500).json({ message: "Error interno al actualizar el monstruo." });
+  }
+});
+
+adminRouter.delete("/monsters/:monsterId", async (req, res) => {
+  try {
+    const monsterId = String(req.params.monsterId);
+
+    const existing = await prisma.monsterCatalogPreset.findUnique({ where: { id: monsterId } });
+    if (!existing) {
+      return res.status(404).json({ message: "Monstruo no encontrado." });
+    }
+
+    await prisma.monsterCatalogPreset.delete({ where: { id: monsterId } });
+
+    return res.json({ ok: true, message: "Monstruo eliminado." });
+  } catch (error) {
+    console.error("Error en DELETE /admin/monsters/:monsterId:", error);
+    return res.status(500).json({ message: "Error interno al eliminar el monstruo." });
+  }
+});
+
+adminRouter.post("/monsters/:monsterId/image", uploadBeastImage.single("image"), async (req, res) => {
+  try {
+    const monsterId = String(req.params.monsterId);
+
+    const existing = await prisma.monsterCatalogPreset.findUnique({ where: { id: monsterId } });
+    if (!existing) {
+      return res.status(404).json({ message: "Monstruo no encontrado." });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ message: "Debes subir una imagen." });
+    }
+
+    let imagePath: string;
+    try {
+      imagePath = await uploadImageToSupabase("monsters", req.file);
+    } catch (uploadError) {
+      console.error("Error subiendo token a Supabase:", uploadError);
+      return res.status(500).json({
+        message: uploadError instanceof Error ? uploadError.message : "No se pudo subir el token.",
+      });
+    }
+
+    const monster = await prisma.monsterCatalogPreset.update({
+      where: { id: monsterId },
+      data: { tokenImagePath: imagePath },
+    });
+
+    return res.json({ monster, imagePath, message: "Token actualizado." });
+  } catch (error) {
+    console.error("Error en POST /admin/monsters/:monsterId/image:", error);
+    return res.status(500).json({
+      message: error instanceof Error ? error.message : "Error interno al subir el token.",
+    });
+  }
+});

@@ -321,6 +321,8 @@ combatRouter.post("/games/:gameId/combat/enemies", async (req, res) => {
     const initiative = toInt(req.body.initiative, 10);
     const x = toInt(req.body.x, 0);
     const y = toInt(req.body.y, 0);
+    // Token copiado del monstruo del bestiario de la partida, si vino de ahí.
+    const tokenImagePath = req.body.tokenImagePath ? String(req.body.tokenImagePath) : null;
 
     if (!name) {
       return res.status(400).json({ message: "El enemigo necesita un nombre." });
@@ -345,6 +347,7 @@ combatRouter.post("/games/:gameId/combat/enemies", async (req, res) => {
         x,
         y,
         initiative,
+        tokenImagePath,
       },
       include: {
         character: {

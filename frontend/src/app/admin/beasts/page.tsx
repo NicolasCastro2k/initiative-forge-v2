@@ -339,6 +339,12 @@ export default function AdminBeastsPage() {
 
           <div className="flex flex-wrap gap-3">
             <a
+              href="/admin/monsters"
+              className="rounded-xl border border-zinc-700 px-4 py-3 font-semibold text-zinc-200 transition hover:bg-zinc-800"
+            >
+              Monstruos
+            </a>
+            <a
               href="/admin/weapons"
               className="rounded-xl border border-zinc-700 px-4 py-3 font-semibold text-zinc-200 transition hover:bg-zinc-800"
             >

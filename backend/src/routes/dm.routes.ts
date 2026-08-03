@@ -215,6 +215,7 @@ dmRouter.post("/games/:gameId/monsters", async (req, res) => {
         speed: req.body.speed !== undefined && req.body.speed !== "" ? Number(req.body.speed) : null,
         damageDice: req.body.damageDice ? String(req.body.damageDice) : null,
         damageType: req.body.damageType ? String(req.body.damageType) : null,
+        tokenImagePath: req.body.tokenImagePath ? String(req.body.tokenImagePath) : null,
         source: req.body.source ? String(req.body.source) : "Personalizado",
       },
     });
@@ -251,6 +252,7 @@ dmRouter.put("/games/:gameId/monsters/:monsterId", async (req, res) => {
         speed: req.body.speed !== undefined ? (req.body.speed === "" ? null : Number(req.body.speed)) : existing.speed,
         damageDice: req.body.damageDice !== undefined ? (req.body.damageDice || null) : existing.damageDice,
         damageType: req.body.damageType !== undefined ? (req.body.damageType || null) : existing.damageType,
+        tokenImagePath: req.body.tokenImagePath !== undefined ? (req.body.tokenImagePath || null) : existing.tokenImagePath,
         source: req.body.source !== undefined ? String(req.body.source) : existing.source,
       },
     });
