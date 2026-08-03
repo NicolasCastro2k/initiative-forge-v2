@@ -236,3 +236,24 @@ presetsRouter.get("/presets/beasts", async (req, res) => {
     return res.status(500).json({ message: "Error interno al cargar bestias." });
   }
 });
+
+// ─── GET /presets/monster-catalog ──────────────────────────────────────────────
+// Lee de la tabla MonsterCatalogPreset. Catálogo global de monstruos, reusable
+// entre partidas, que la Pantalla del DM usa para importar una copia (con
+// token) al bestiario (MonsterPreset) de una partida puntual.
+
+presetsRouter.get("/presets/monster-catalog", async (req, res) => {
+  try {
+    const user = getAuthUser(req);
+    if (!user) return res.status(401).json({ message: "Debes iniciar sesión." });
+
+    const monsters = await prisma.monsterCatalogPreset.findMany({
+      orderBy: [{ cr: "asc" }, { name: "asc" }],
+    });
+
+    return res.json({ monsters });
+  } catch (error) {
+    console.error("Error en GET /presets/monster-catalog:", error);
+    return res.status(500).json({ message: "Error interno al cargar el catálogo de monstruos." });
+  }
+});
