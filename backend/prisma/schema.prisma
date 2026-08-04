@@ -162,6 +162,7 @@ model Combatant {
   y    Int
   initiative Int
   tokenImagePath String?
+  attacks Json @default("[]") // [{ name, attackBonus, damage }] — copiado del bestiario al agregar el enemigo
 
   // Velocidad y movimiento (1 casilla = 5 pies)
   speed        Int @default(30)
@@ -419,6 +420,7 @@ model MonsterPreset {
   damageDice  String?
   damageType  String?
   tokenImagePath String?
+  attacks     Json     @default("[]") // [{ name, attackBonus, damage }] — damage incluye el tipo, ej "1d8+3 cortante"
   source      String   @default("Personalizado")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

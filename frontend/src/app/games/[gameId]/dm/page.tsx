@@ -57,11 +57,16 @@ type Monster = {
   damageDice: string | null;
   damageType: string | null;
   tokenImagePath: string | null;
+  // Lista estructurada de ataques (copiada del catálogo global al importar) —
+  // esto es lo que usa el tablero de combate para armar el menú de ataque
+  // de un enemigo. damageDice/damageType arriba solo quedan como resumen del
+  // primer ataque, para mostrarlo rápido en esta pantalla.
+  attacks: { name: string; attackBonus: string; damage: string }[];
 };
 
 // Entrada del catálogo GLOBAL de monstruos (/presets/monster-catalog),
 // reusable entre partidas. Al "cargarlo", se crea una copia en el bestiario
-// de ESTA partida (Monster de arriba), incluido el token.
+// de ESTA partida (Monster de arriba), incluido el token y TODOS sus ataques.
 type CatalogMonster = {
   id: string;
   name: string;
@@ -71,7 +76,7 @@ type CatalogMonster = {
   hitDice: string;
   speedWalk: number;
   tokenImagePath: string | null;
-  attacks: { name: string; damage: string; damageType: string }[];
+  attacks: { name: string; attackBonus: string; damage: string; damageType: string }[];
   traits: string;
   source: string;
 };
@@ -353,11 +358,22 @@ export default function DmScreenPage() {
   async function createMonster() {
     if (!gameId || !monsterForm.name.trim()) return;
     try {
+      // Alta a mano: como no hay UI para múltiples ataques todavía, se arma
+      // un único ataque a partir de daño/tipo (si los cargaron) para que el
+      // tablero de combate lo pueda usar igual.
+      const attacks = monsterForm.damageDice
+        ? [{
+            name: monsterForm.name.trim(),
+            attackBonus: "+0",
+            damage: `${monsterForm.damageDice}${monsterForm.damageType ? ` ${monsterForm.damageType}` : ""}`.trim(),
+          }]
+        : [];
+
       const response = await fetch(`${API_URL}/games/${gameId}/monsters`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(monsterForm),
+        body: JSON.stringify({ ...monsterForm, attacks }),
       });
       const data = await response.json().catch(() => null);
       if (!response.ok) { setError(data?.message ?? "No se pudo crear el monstruo."); return; }
@@ -382,8 +398,9 @@ export default function DmScreenPage() {
   }
 
   // Copia un monstruo del catálogo GLOBAL al bestiario de ESTA partida —
-  // trae stats, token y un resumen de ataques/rasgos como descripción, para
-  // que quede utilizable de una en el tablero de combate.
+  // trae stats, token, TODOS sus ataques (estructurados, para el motor de
+  // combate) y un resumen como descripción, para que quede utilizable de una
+  // en el tablero de combate.
   async function importFromCatalog(catalogMonster: CatalogMonster) {
     if (!gameId) return;
     setIsImportingId(catalogMonster.id);
@@ -393,6 +410,15 @@ export default function DmScreenPage() {
       .map((a) => `${a.name}: ${a.damage}${a.damageType ? ` ${a.damageType}` : ""}`)
       .join(" · ");
     const primaryAttack = catalogMonster.attacks[0];
+
+    // El motor de combate espera { name, attackBonus, damage } con el tipo de
+    // daño ya incluido en el string (ej "1d6+2 cortante"), igual que las
+    // fichas de personaje — se arma acá para no tocar el backend de combate.
+    const attacksForBestiary = catalogMonster.attacks.map((a) => ({
+      name: a.name,
+      attackBonus: a.attackBonus || "+0",
+      damage: `${a.damage}${a.damageType ? ` ${a.damageType}` : ""}`.trim(),
+    }));
 
     try {
       const response = await fetch(`${API_URL}/games/${gameId}/monsters`, {
@@ -411,6 +437,7 @@ export default function DmScreenPage() {
           damageType: primaryAttack?.damageType ?? null,
           tokenImagePath: catalogMonster.tokenImagePath,
           source: catalogMonster.source,
+          attacks: attacksForBestiary,
         }),
       });
       const data = await response.json().catch(() => null);
@@ -611,6 +638,7 @@ export default function DmScreenPage() {
                             {monster.hp !== null ? `PG ${monster.hp}` : ""}
                             {monster.ac !== null ? ` · CA ${monster.ac}` : ""}
                             {monster.damageDice ? ` · ${monster.damageDice} ${monster.damageType ?? ""}` : ""}
+                            {monster.attacks?.length > 1 ? ` · ${monster.attacks.length} ataques` : ""}
                           </p>
                         </div>
                       </div>

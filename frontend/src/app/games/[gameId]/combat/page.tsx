@@ -48,6 +48,11 @@ type BattleMap = {
 
 type CombatantType = "PLAYER" | "ENEMY";
 
+// Ataque de un monstruo, mismo shape que el motor de combate espera para
+// cualquier combatiente (jugador o enemigo): { name, attackBonus, damage },
+// con el tipo de daño ya incluido en el string de `damage`.
+type MonsterAttack = { name: string; attackBonus: string; damage: string };
+
 // Monstruo del bestiario de la partida (lo que el DM ve/carga en su pantalla
 // — /games/:gameId/monsters). No confundir con el catálogo global de
 // monstruos (/presets/monster-catalog): este es el que ya está "en la mesa"
@@ -63,6 +68,7 @@ type BestiaryMonster = {
   damageDice: string | null;
   damageType: string | null;
   tokenImagePath: string | null;
+  attacks: MonsterAttack[];
 };
 
 type CombatCharacter = {
@@ -111,6 +117,7 @@ type Combatant = {
   int: number; wis: number; cha: number;
   conditions: Condition[];
   tokenImagePath: string | null;
+  attacks: MonsterAttack[];
   createdAt: string;
   updatedAt: string;
   character?: CombatCharacter | null;
@@ -189,6 +196,9 @@ export default function CombatPage() {
   const [enemyAc, setEnemyAc] = useState(13);
   const [enemyInitiative, setEnemyInitiative] = useState(10);
   const [enemyTokenImagePath, setEnemyTokenImagePath] = useState<string | null>(null);
+  // Ataques del monstruo elegido del bestiario — viajan con el enemigo al
+  // agregarlo al combate, para que el panel de acciones pueda ofrecerlos.
+  const [enemyAttacks, setEnemyAttacks] = useState<MonsterAttack[]>([]);
   // Bestiario de la partida (monstruos que el DM cargó en su pantalla, sea a
   // mano o importados del catálogo global) — de acá se eligen los enemigos
   // para agregarlos al combate ya con su token.
@@ -898,6 +908,7 @@ export default function CombatPage() {
     if (monster.hp !== null) setEnemyHp(monster.hp);
     if (monster.ac !== null) setEnemyAc(monster.ac);
     setEnemyTokenImagePath(monster.tokenImagePath);
+    setEnemyAttacks(monster.attacks ?? []);
   }
 
   async function addEnemy(event: React.FormEvent<HTMLFormElement>) {
@@ -942,6 +953,7 @@ export default function CombatPage() {
           ac: enemyAc,
           initiative: enemyInitiative,
           tokenImagePath: enemyTokenImagePath,
+          attacks: enemyAttacks,
           x: freeTile.x,
           y: freeTile.y,
         }),
@@ -961,6 +973,7 @@ export default function CombatPage() {
       setEnemyAc(13);
       setEnemyInitiative(10);
       setEnemyTokenImagePath(null);
+      setEnemyAttacks([]);
       setSelectedBestiaryId("");
 
       setCombatLog((current) => [
@@ -1392,6 +1405,11 @@ export default function CombatPage() {
                       Se cargan en <a href={`/games/${gameId}/dm`} className="underline hover:text-zinc-300">la pantalla del DM</a>,
                       a mano o desde el catálogo de monstruos.
                     </p>
+                    {enemyAttacks.length > 0 && (
+                      <p className="mt-1 text-[11px] text-emerald-400">
+                        {enemyAttacks.length} ataque(s) listo(s) para el panel de combate.
+                      </p>
+                    )}
                   </div>
                 )}
 
@@ -1408,8 +1426,12 @@ export default function CombatPage() {
                         onChange={(e) => {
                           setEnemyName(e.target.value);
                           // Si toca el nombre a mano, ya no es "el mismo" que el
-                          // elegido del bestiario — se desvincula el token/selección.
-                          if (selectedBestiaryId) { setSelectedBestiaryId(""); setEnemyTokenImagePath(null); }
+                          // elegido del bestiario — se desvincula token/ataques/selección.
+                          if (selectedBestiaryId) {
+                            setSelectedBestiaryId("");
+                            setEnemyTokenImagePath(null);
+                            setEnemyAttacks([]);
+                          }
                         }}
                         className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white outline-none transition focus:border-red-400"
                         placeholder="Goblin, Orco, Bandido..." />

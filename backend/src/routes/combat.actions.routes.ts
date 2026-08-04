@@ -184,6 +184,23 @@ type RealSheetData = {
   };
 };
 
+// Ataques de un enemigo del bestiario (Combatant.attacks / MonsterPreset.attacks),
+// mismo shape que RealSheetData["attacks"] — se usan cuando el combatiente no
+// tiene `character` asociado (o su ficha no trae ataques propios).
+type CombatantAttack = { name: string; attackBonus: string; damage: string };
+
+function getCombatantAttacksFallback(value: unknown): CombatantAttack[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((a) => a && typeof a === "object")
+    .map((a: Record<string, unknown>) => ({
+      name: String(a.name ?? ""),
+      attackBonus: String(a.attackBonus ?? "+0"),
+      damage: String(a.damage ?? ""),
+    }))
+    .filter((a) => a.name && a.damage);
+}
+
 function parseRealSheet(raw: unknown): RealSheetData {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
   return raw as RealSheetData;
@@ -239,9 +256,14 @@ combatActionsRouter.get(
       if (!combatant) return res.status(404).json({ message: "Combatiente no encontrado." });
 
       const sheet = parseRealSheet(combatant.character?.sheetData);
-      const attacks = sheet.attacks ?? [];
+      let attacks = sheet.attacks ?? [];
 
-      // Para enemigos o personajes sin ataques, devolver lista vacía
+      // Enemigos (sin character) — y cualquier combatiente sin ataques en su
+      // ficha — usan los ataques copiados del bestiario al agregarlos al combate.
+      if (attacks.length === 0) {
+        attacks = getCombatantAttacksFallback((combatant as { attacks?: unknown }).attacks);
+      }
+
       const weapons = attacks.map((a) => ({
         name: a.name,
         attackBonus: parseAttackBonus(a.attackBonus),
@@ -358,9 +380,13 @@ combatActionsRouter.post(
         return res.status(400).json({ message: "Ya usaste tu acción este turno." });
       }
 
-      // Buscar el ataque en la ficha real del personaje
+      // Buscar el ataque en la ficha real del personaje — si no tiene (es un
+      // enemigo del bestiario), usar los ataques copiados al Combatant.
       const sheet = parseRealSheet(attacker.character?.sheetData);
-      const attacks = sheet.attacks ?? [];
+      let attacks = sheet.attacks ?? [];
+      if (attacks.length === 0) {
+        attacks = getCombatantAttacksFallback((attacker as { attacks?: unknown }).attacks);
+      }
       const attack = attacks.find((a) => a.name === weaponName) ?? attacks[0];
 
       if (!attack) {

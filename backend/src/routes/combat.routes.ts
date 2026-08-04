@@ -134,6 +134,21 @@ function normalizeTurnIndex(currentTurnIndex: number, combatantCount: number) {
   return currentTurnIndex;
 }
 
+// Normaliza el array de ataques recibido del cliente al shape que espera el
+// motor de combate ({ name, attackBonus, damage }, con el tipo de daño ya
+// incluido en el string de `damage`, ej "1d8+3 cortante").
+function normalizeAttacks(value: unknown): { name: string; attackBonus: string; damage: string }[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((a) => a && typeof a === "object")
+    .map((a: Record<string, unknown>) => ({
+      name: String(a.name ?? "").trim(),
+      attackBonus: String(a.attackBonus ?? "+0").trim(),
+      damage: String(a.damage ?? "").trim(),
+    }))
+    .filter((a) => a.name && a.damage);
+}
+
 // ─── GET /games/:gameId/combat ────────────────────────────────────────────────
 combatRouter.get("/games/:gameId/combat", async (req, res) => {
   try {
@@ -323,6 +338,8 @@ combatRouter.post("/games/:gameId/combat/enemies", async (req, res) => {
     const y = toInt(req.body.y, 0);
     // Token copiado del monstruo del bestiario de la partida, si vino de ahí.
     const tokenImagePath = req.body.tokenImagePath ? String(req.body.tokenImagePath) : null;
+    // Ataques copiados del monstruo del bestiario de la partida, si vino de ahí.
+    const attacks = normalizeAttacks(req.body.attacks);
 
     if (!name) {
       return res.status(400).json({ message: "El enemigo necesita un nombre." });
@@ -348,6 +365,7 @@ combatRouter.post("/games/:gameId/combat/enemies", async (req, res) => {
         y,
         initiative,
         tokenImagePath,
+        attacks,
       },
       include: {
         character: {

@@ -29,6 +29,21 @@ async function requireDm(gameId: string, userId: string) {
   return membership;
 }
 
+// Normaliza el array de ataques recibido del cliente al shape que espera el
+// motor de combate ({ name, attackBonus, damage } — el tipo de daño va
+// incluido en el string de `damage`, ej "1d8+3 cortante").
+function normalizeAttacks(value: unknown): { name: string; attackBonus: string; damage: string }[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((a) => a && typeof a === "object")
+    .map((a: Record<string, unknown>) => ({
+      name: String(a.name ?? "").trim(),
+      attackBonus: String(a.attackBonus ?? "+0").trim(),
+      damage: String(a.damage ?? "").trim(),
+    }))
+    .filter((a) => a.name && a.damage);
+}
+
 // ─── Notas del DM ───────────────────────────────────────────────────────────
 
 dmRouter.get("/games/:gameId/dm/notes", async (req, res) => {
@@ -217,6 +232,7 @@ dmRouter.post("/games/:gameId/monsters", async (req, res) => {
         damageType: req.body.damageType ? String(req.body.damageType) : null,
         tokenImagePath: req.body.tokenImagePath ? String(req.body.tokenImagePath) : null,
         source: req.body.source ? String(req.body.source) : "Personalizado",
+        attacks: normalizeAttacks(req.body.attacks),
       },
     });
 
@@ -254,6 +270,7 @@ dmRouter.put("/games/:gameId/monsters/:monsterId", async (req, res) => {
         damageType: req.body.damageType !== undefined ? (req.body.damageType || null) : existing.damageType,
         tokenImagePath: req.body.tokenImagePath !== undefined ? (req.body.tokenImagePath || null) : existing.tokenImagePath,
         source: req.body.source !== undefined ? String(req.body.source) : existing.source,
+        attacks: req.body.attacks !== undefined ? normalizeAttacks(req.body.attacks) : existing.attacks,
       },
     });
 
