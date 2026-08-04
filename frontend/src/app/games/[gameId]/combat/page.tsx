@@ -161,6 +161,15 @@ function getCombatantTokenPath(combatant: Combatant): string | null {
   return combatant.tokenImagePath ?? combatant.character?.tokenImagePath ?? null;
 }
 
+// Igual que en dm/page.tsx: Supabase puede devolver una URL absoluta
+// (https://...) o el backend una ruta relativa (/uploads/...) — sin este
+// chequeo, una URL absoluta terminaba pegada detrás de API_URL y rompía el
+// token ("http://localhost:4000https://xxx.supabase.co/...").
+function getImageUrl(path: string | null) {
+  if (!path) return "";
+  return path.startsWith("http") ? path : `${API_URL}${path}`;
+}
+
 function getTokenClass(
   combatant: Combatant,
   isSelected: boolean,
@@ -1364,7 +1373,7 @@ export default function CombatPage() {
                           ].join(" ")}>
                           <span className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border-2 border-sky-400 bg-sky-500/20 text-lg font-black text-sky-200">
                             {combatant.character?.tokenImagePath ? (
-                              <img src={`${API_URL}${combatant.character.tokenImagePath}`} alt={combatant.name}
+                              <img src={getImageUrl(combatant.character.tokenImagePath)} alt={combatant.name}
                                 className="h-full w-full object-cover" draggable={false} />
                             ) : (
                               combatant.name.slice(0, 1)
@@ -1417,7 +1426,7 @@ export default function CombatPage() {
                   <div className="flex items-end gap-3">
                     {enemyTokenImagePath && (
                       <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded-full border-2 border-red-400 bg-zinc-950">
-                        <img src={`${API_URL}${enemyTokenImagePath}`} alt="" className="h-full w-full object-cover" />
+                        <img src={getImageUrl(enemyTokenImagePath)} alt="" className="h-full w-full object-cover" />
                       </div>
                     )}
                     <div className="flex-1">
@@ -1556,7 +1565,7 @@ export default function CombatPage() {
                                   <span className={getTokenClass(combatant, isSelected, isActive, canControl, !!tokenPath)}>
                                     {tokenPath ? (
                                       <img
-                                        src={`${API_URL}${tokenPath}`}
+                                        src={getImageUrl(tokenPath)}
                                         alt={combatant.name}
                                         className="h-full w-full object-cover"
                                         draggable={false}
