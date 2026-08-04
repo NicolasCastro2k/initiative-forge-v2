@@ -15,6 +15,7 @@
 // descanso corto) — se implementó así porque fue lo pedido explícitamente.
 
 import { Router } from "express";
+import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { getAuthUser } from "../lib/getAuthUser.js";
 import { emitToGame } from "../lib/socket.js";
@@ -232,7 +233,7 @@ dmRouter.post("/games/:gameId/monsters", async (req, res) => {
         damageType: req.body.damageType ? String(req.body.damageType) : null,
         tokenImagePath: req.body.tokenImagePath ? String(req.body.tokenImagePath) : null,
         source: req.body.source ? String(req.body.source) : "Personalizado",
-        attacks: normalizeAttacks(req.body.attacks),
+        attacks: normalizeAttacks(req.body.attacks) as Prisma.InputJsonValue,
       },
     });
 
@@ -270,7 +271,7 @@ dmRouter.put("/games/:gameId/monsters/:monsterId", async (req, res) => {
         damageType: req.body.damageType !== undefined ? (req.body.damageType || null) : existing.damageType,
         tokenImagePath: req.body.tokenImagePath !== undefined ? (req.body.tokenImagePath || null) : existing.tokenImagePath,
         source: req.body.source !== undefined ? String(req.body.source) : existing.source,
-        attacks: req.body.attacks !== undefined ? normalizeAttacks(req.body.attacks) : existing.attacks,
+        attacks: (req.body.attacks !== undefined ? normalizeAttacks(req.body.attacks) : existing.attacks) as Prisma.InputJsonValue,
       },
     });
 
