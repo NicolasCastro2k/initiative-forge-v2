@@ -256,4 +256,4 @@ presetsRouter.get("/presets/monster-catalog", async (req, res) => {
     console.error("Error en GET /presets/monster-catalog:", error);
     return res.status(500).json({ message: "Error interno al cargar el catálogo de monstruos." });
   }
-});
+})

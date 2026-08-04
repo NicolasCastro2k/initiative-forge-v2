@@ -161,6 +161,7 @@ model Combatant {
   x    Int
   y    Int
   initiative Int
+  tokenImagePath String?
 
   // Velocidad y movimiento (1 casilla = 5 pies)
   speed        Int @default(30)
